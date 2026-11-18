@@ -61,17 +61,28 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
   .weather .t { font-size: 24px; font-weight: 800; letter-spacing: -0.03em; line-height: 1; }
   .weather .d { font-size: 13px; color: var(--muted); line-height: 1.5; }
   .weather .d b { color: var(--text); font-weight: 600; }
-  .cat { display: none; max-width: 420px; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .duo { display: grid; grid-template-columns: 1fr 1fr; gap: 16px; align-items: start; }
+  @media (max-width: 600px) { .duo { grid-template-columns: 1fr; } }
+  .cat { display: none; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
   .cat.on { display: block; }
   .cat .ph { aspect-ratio: 16 / 10; background: var(--line); }
   .cat img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity .3s; }
   .cat img.loading { opacity: .3; }
-  .cat .bar { display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; font-size: 13px; color: var(--muted); }
+  .cat .bar { min-height: 60px; display: flex; justify-content: space-between; align-items: center; padding: 12px 16px; font-size: 13px; color: var(--muted); }
   .cat .bar a { text-decoration: underline; text-underline-offset: 2px; }
   .cat button { font: inherit; font-size: 13px; font-weight: 600; border: 1px solid var(--line); background: var(--bg);
     color: var(--text); padding: 6px 12px; border-radius: 999px; cursor: pointer; }
   .cat button:hover { border-color: var(--accent); color: var(--accent); }
   .cat button:disabled { opacity: .5; cursor: wait; }
+  .poke { display: none; background: var(--surface); border: 1px solid var(--line); border-radius: 16px; overflow: hidden; }
+  .poke.on { display: block; }
+  .poke .ph { aspect-ratio: 16 / 10; background: var(--accent-soft); display: flex; align-items: center; justify-content: center; position: relative; }
+  .poke img { height: 88%; width: auto; display: block; filter: drop-shadow(0 6px 10px rgba(0,0,0,.15)); }
+  .poke .no { z-index: 1; position: absolute; top: 12px; left: 14px; font-size: 12px; font-weight: 700; color: var(--accent); letter-spacing: .04em; }
+  .poke .bar { min-height: 60px; display: flex; justify-content: space-between; align-items: center; gap: 8px; padding: 12px 16px; font-size: 13px; color: var(--muted); }
+  .poke .bar b { color: var(--text); font-size: 15px; margin-right: 6px; }
+  .poke .types { display: flex; gap: 4px; flex-shrink: 0; }
+  .poke .types span { font-size: 12px; font-weight: 600; padding: 3px 8px; border-radius: 999px; border: 1px solid var(--line); background: var(--bg); color: var(--text); }
   footer { padding: 40px 0 56px; font-size: 13px; color: var(--muted); text-align: center; }
   @media (max-width: 520px) { nav ul { gap: 14px; } .hero { padding: 48px 0 32px; } }
 </style>
@@ -117,13 +128,22 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
   </section>
 
   <section id="cat-section">
-    <h2>쉬어가는 고양이</h2>
+    <h2>쉬어가는 코너</h2>
+    <div class="duo">
     <div class="cat" id="cat">
       <div class="ph"><img id="cat-img" alt="랜덤 고양이 사진"></div>
       <div class="bar">
         <span>사진 제공 <a href="https://thecatapi.com" target="_blank" rel="noopener">The Cat API</a></span>
         <button type="button" id="cat-btn">다른 고양이 보기</button>
       </div>
+    </div>
+    <div class="poke" id="poke">
+      <div class="ph"><span class="no" id="poke-no"></span><img id="poke-img" alt=""></div>
+      <div class="bar">
+        <span><b id="poke-name"></b><span id="poke-genus"></span></span>
+        <span class="types" id="poke-types"></span>
+      </div>
+    </div>
     </div>
   </section>
 
@@ -204,6 +224,36 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
     }
     $btn.addEventListener("click", () => loadCat("button"));
     loadCat("init");
+  })();
+  // 오늘의 포켓몬: 한국시간(KST) 날짜 기준으로 하루 한 마리를 고정해 보여줍니다. (PokeAPI)
+  (async function pokemonOfTheDay() {
+    const TYPE_KO = { normal: "노말", fire: "불꽃", water: "물", electric: "전기", grass: "풀", ice: "얼음",
+      fighting: "격투", poison: "독", ground: "땅", flying: "비행", psychic: "에스퍼", bug: "벌레", rock: "바위",
+      ghost: "고스트", dragon: "드래곤", dark: "악", steel: "강철", fairy: "페어리" };
+    try {
+      const api = "https://pokeapi.co/api/v2";
+      const { count } = await (await fetch(`${api}/pokemon-species?limit=1`)).json();
+      // KST 기준 '오늘'의 일련번호 → 같은 날엔 모두 같은 포켓몬, 날마다 겹치지 않게 순환
+      const dayIndex = Math.floor((Date.now() + 9 * 3600 * 1000) / 86400000);
+      const id = (dayIndex * 7919) % count + 1;
+      const [species, poke] = await Promise.all([
+        fetch(`${api}/pokemon-species/${id}`).then(r => r.json()),
+        fetch(`${api}/pokemon/${id}`).then(r => r.json())
+      ]);
+      const ko = (list, key) => (list.find(x => x.language.name === "ko") || {})[key];
+      const name = ko(species.names, "name") || poke.name;
+      const art = poke.sprites.other["official-artwork"].front_default || poke.sprites.front_default;
+      if (!art) return;
+      document.getElementById("poke-img").src = art;
+      document.getElementById("poke-img").alt = name;
+      document.getElementById("poke-no").textContent = "오늘의 포켓몬 · No." + String(id).padStart(4, "0");
+      document.getElementById("poke-name").textContent = name;
+      document.getElementById("poke-genus").textContent = ko(species.genera, "genus") || "";
+      document.getElementById("poke-types").innerHTML =
+        poke.types.map(t => `<span>${TYPE_KO[t.type.name] || t.type.name}</span>`).join("");
+      const $card = document.getElementById("poke");
+      $card.classList.add("on");
+    } catch (e) { /* 실패 시 카드 숨김 유지 */ }
   })();
 </script>
 </body>
