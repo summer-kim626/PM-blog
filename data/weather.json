@@ -6,7 +6,7 @@
   "temp_max": 1,
   "humidity": 59,
   "description": "맑음",
-  "icon": "01n",
-  "observed_at": 1795039205,
-  "fetched_at": 1795039227
+  "icon": "01d",
+  "observed_at": 1795042659,
+  "fetched_at": 1795042932
 }
