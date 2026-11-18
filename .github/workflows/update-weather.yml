@@ -19,7 +19,7 @@ jobs:
   update:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Fetch weather
         env:
@@ -28,6 +28,7 @@ jobs:
           if [ -z "$OPENWEATHER_API_KEY" ]; then
             echo "::error::OPENWEATHER_API_KEY secret 이 없습니다."; exit 1
           fi
+          mkdir -p data
           curl -sS --fail -o raw.json \
             "https://api.openweathermap.org/data/2.5/weather?q=Seoul,KR&units=metric&lang=kr&appid=${OPENWEATHER_API_KEY}"
           # 필요한 값만 추려서 저장 (원본 응답은 저장하지 않음)
