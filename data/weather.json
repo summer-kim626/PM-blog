@@ -1,12 +1,12 @@
 {
   "city": "서울",
-  "temp": -0,
-  "feels_like": -4,
-  "temp_min": -0,
+  "temp": -2,
+  "feels_like": -7,
+  "temp_min": -2,
   "temp_max": -0,
-  "humidity": 47,
+  "humidity": 54,
   "description": "맑음",
   "icon": "01n",
-  "observed_at": 1795169750,
-  "fetched_at": 1795169872
+  "observed_at": 1795176323,
+  "fetched_at": 1795176527
 }
