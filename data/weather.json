@@ -3,10 +3,10 @@
   "temp": -4,
   "feels_like": -10,
   "temp_min": -4,
-  "temp_max": -4,
+  "temp_max": -2,
   "humidity": 46,
   "description": "맑음",
   "icon": "01n",
-  "observed_at": 1795205570,
-  "fetched_at": 1795205633
+  "observed_at": 1795208400,
+  "fetched_at": 1795208632
 }
