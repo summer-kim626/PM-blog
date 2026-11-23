@@ -4,9 +4,9 @@
   "feels_like": 11,
   "temp_min": 12,
   "temp_max": 12,
-  "humidity": 76,
-  "description": "실 비",
-  "icon": "10d",
-  "observed_at": 1795407484,
-  "fetched_at": 1795407728
+  "humidity": 94,
+  "description": "비를 동반한 뇌우",
+  "icon": "11d",
+  "observed_at": 1795414197,
+  "fetched_at": 1795414737
 }
