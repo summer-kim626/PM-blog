@@ -1,0 +1,196 @@
+{
+  "slug": "test-figures",
+  "title": "도형 테스트",
+  "category": "테스트",
+  "cards": [
+    {
+      "type": "cover",
+      "headline": "도형 전체 테스트",
+      "sub": "figures.js의 모든 도형",
+      "figure": {
+        "shape": "tree"
+      }
+    },
+    {
+      "type": "point",
+      "headline": "versus",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "versus",
+        "labels": [
+          "단단함",
+          "유연함"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "link",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "link",
+        "labels": [
+          "지식",
+          "문제",
+          "연결"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "contrast",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "contrast",
+        "labels": [
+          "꾸준함",
+          "유연함"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "tree",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "tree",
+        "labels": []
+      }
+    },
+    {
+      "type": "point",
+      "headline": "steps",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "steps",
+        "labels": [
+          "기획",
+          "개발",
+          "출시"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "cycle",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "cycle",
+        "labels": [
+          "계획",
+          "실행",
+          "회고"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "diverge",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "diverge",
+        "labels": [
+          "A안",
+          "B안",
+          "C안"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "converge",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "converge",
+        "labels": [
+          "요구1",
+          "요구2",
+          "요구3",
+          "핵심"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "checklist",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "checklist",
+        "labels": [
+          "근거 먼저",
+          "실패 기록",
+          "한 글 한 질문"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "magnifier",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "magnifier",
+        "labels": [
+          "문제"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "bulb",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "bulb",
+        "labels": []
+      }
+    },
+    {
+      "type": "point",
+      "headline": "chart",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "chart",
+        "labels": [
+          "1월",
+          "2월",
+          "3월"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "target",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "target",
+        "labels": [
+          "목표"
+        ]
+      }
+    },
+    {
+      "type": "point",
+      "headline": "doc",
+      "body": "도형 이름과 라벨 위치를 확인하는 테스트 카드입니다.",
+      "figure": {
+        "shape": "doc",
+        "labels": []
+      }
+    },
+    {
+      "type": "point",
+      "headline": "모르는 도형 이름",
+      "body": "도형 없이 기본 레이아웃으로 그려져야 합니다.",
+      "figure": {
+        "shape": "unknown"
+      }
+    },
+    {
+      "type": "cta",
+      "headline": "마무리 카드 도형",
+      "body": "어두운 배경에서 선 색 확인",
+      "figure": {
+        "shape": "bulb"
+      }
+    }
+  ]
+}

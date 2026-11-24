@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>카드뉴스 템플릿 | PM Blog</title>
+<!--
+  카드뉴스 템플릿 (F4)
+  - 사용법: template.html?src=<JSON 경로>&scale=<배율>
+      src   기본값 sample.json. 예) ../data/cardnews/<slug>/summary.json
+      scale 미리보기 배율. 기본값 1(실제 크기). 예) 0.35
+  - 카드 1장 = .card 요소 1개 = 1080×1350px. 렌더러는 scale=1로 열어 .card를 하나씩 캡처한다.
+  - 준비가 끝나면 window.__CARDS_READY = true, 넘친 카드는 window.__CARD_WARNINGS에 담긴다.
+  - 인스타그램 이미지라 다크 모드 없이 라이트 고정이다. 색은 블로그 :root 토큰과 같은 값을 쓴다.
+-->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/static/pretendard.min.css">
+<style>
+  :root {
+    --bg: #fafaf9; --surface: #ffffff; --text: #1c1917; --muted: #78716c;
+    --line: #e7e5e4; --accent: #ea580c; --accent-soft: #fff7ed;
+    --ink: #1c1917; --ink-muted: #a8a29e;
+    --pad: 96px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: "Pretendard", -apple-system, BlinkMacSystemFont, "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: #d6d3d1; color: var(--text); word-break: keep-all; overflow-wrap: break-word;
+    -webkit-font-smoothing: antialiased;
+  }
+  .deck { display: flex; flex-direction: column; align-items: flex-start; gap: 40px; padding: 40px; }
+  .frame { width: calc(1080px * var(--scale, 1)); height: calc(1350px * var(--scale, 1)); flex: none; }
+  .frame .card { transform: scale(var(--scale, 1)); transform-origin: top left; }
+  body.preview .deck { flex-direction: row; flex-wrap: wrap; }
+  body.capture { background: transparent; }
+  body.capture .deck { padding: 0; gap: 0; }
+
+  /* ── 카드 공통 ── */
+  .card {
+    position: relative; width: 1080px; height: 1350px; overflow: hidden;
+    display: flex; flex-direction: column; padding: var(--pad);
+    background: var(--bg); color: var(--text);
+  }
+  .top { display: flex; justify-content: space-between; align-items: center; height: 56px; flex: none; }
+  .logo { font-weight: 800; font-size: 36px; letter-spacing: -0.03em; }
+  .logo span { color: var(--accent); }
+  .page { font-size: 28px; font-weight: 600; color: var(--muted); font-variant-numeric: tabular-nums; letter-spacing: 0.04em; }
+  .content { flex: 1; min-height: 0; display: flex; flex-direction: column; justify-content: center; }
+  .progress { display: flex; gap: 10px; height: 8px; flex: none; }
+  .progress i { flex: 1; border-radius: 4px; background: var(--line); }
+  .progress i.on { background: var(--accent); }
+
+  /* ── 표지 ── */
+  .card.cover { background: var(--accent); color: #fff; }
+  .cover .logo span { color: var(--ink); }
+  .cover .page { color: rgba(255,255,255,.75); }
+  .cover .progress i { background: rgba(255,255,255,.3); }
+  .cover .progress i.on { background: #fff; }
+  .chip {
+    align-self: flex-start; font-size: 30px; font-weight: 700; padding: 12px 28px; border-radius: 999px;
+    background: rgba(255,255,255,.18); margin-bottom: 48px;
+  }
+  .cover h1 { font-size: 104px; font-weight: 800; line-height: 1.2; letter-spacing: -0.045em; }
+  .cover .sub { margin-top: 40px; font-size: 42px; font-weight: 500; line-height: 1.5; color: rgba(255,255,255,.88); letter-spacing: -0.02em; }
+  .cover .content { justify-content: flex-end; padding-bottom: 72px; }
+  .cover .swipe { margin-top: 88px; font-size: 30px; font-weight: 600; color: rgba(255,255,255,.8); }
+
+  /* ── 핵심 ── */
+  .point .num { font-size: 168px; font-weight: 800; line-height: 1; color: var(--accent); letter-spacing: -0.05em; margin-bottom: 56px; font-variant-numeric: tabular-nums; }
+  .point h2 { font-size: 80px; font-weight: 800; line-height: 1.25; letter-spacing: -0.04em; }
+  .point .rule { width: 96px; height: 8px; border-radius: 4px; background: var(--accent); margin: 56px 0; }
+  .point .body { font-size: 44px; font-weight: 500; line-height: 1.6; color: #44403c; letter-spacing: -0.02em; }
+
+  /* ── 마무리 ── */
+  .card.cta { background: var(--ink); color: #fff; }
+  .cta .page { color: var(--ink-muted); }
+  .cta .progress i { background: #44403c; }
+  .cta h2 { font-size: 88px; font-weight: 800; line-height: 1.25; letter-spacing: -0.04em; }
+  .cta .body { margin-top: 40px; font-size: 44px; font-weight: 500; line-height: 1.5; color: var(--ink-muted); }
+  .cta .link {
+    align-self: flex-start; margin-top: 72px; display: inline-flex; align-items: center; gap: 20px;
+    padding: 28px 44px; border-radius: 999px; background: var(--accent); color: #fff;
+    font-size: 36px; font-weight: 700; letter-spacing: -0.01em;
+  }
+  .cta .handle { margin-top: 32px; font-size: 30px; font-weight: 600; color: var(--ink-muted); }
+
+  /* ── 도형 (figures.js) ── */
+  .card { --fig-accent: var(--accent); --card-bg: var(--bg); }
+  .card.cover { --fig-accent: var(--ink); --card-bg: var(--accent); }
+  .card.cta { --card-bg: var(--ink); }
+  .figure { flex: 1; min-height: 300px; display: flex; align-items: center; justify-content: center; margin: 48px 0; }
+  .figure svg { width: 100%; height: 100%; max-height: 560px; overflow: visible; }
+  .figure .s, .figure .a { fill: none; stroke-width: 10; stroke-linecap: round; stroke-linejoin: round; }
+  .figure .s { stroke: currentColor; }
+  .figure .a { stroke: var(--fig-accent); }
+  .figure .thick { stroke-width: 22; }
+  .figure .dash { stroke-width: 12; stroke-dasharray: 26 26; }
+  .figure .bud { fill: var(--card-bg); }
+  .figure .fill { fill: var(--fig-accent); }
+  .figure .lb { fill: currentColor; font-size: 46px; font-weight: 800; letter-spacing: -0.03em; }
+  .figure .la { fill: var(--fig-accent); }
+
+  /* 도형이 있으면 글은 위·아래로, 도형은 가운데로 */
+  .point.has-figure .content { justify-content: flex-start; padding: 40px 0 72px; }
+  .point.has-figure .num { font-size: 72px; margin-bottom: 20px; }
+  .point.has-figure h2 { font-size: 76px; }
+  .point.has-figure .rule { display: none; }
+  .cover.has-figure .content { justify-content: flex-start; padding-bottom: 56px; }
+  .cover.has-figure .figure { margin: 24px 0 56px; }
+  .cover.has-figure h1 { font-size: 96px; }
+  .cover.has-figure .swipe { margin-top: 56px; }
+  .cta.has-figure .content { justify-content: flex-start; padding-bottom: 32px; }
+  .cta.has-figure .figure { margin: 24px 0 64px; }
+  .cta.has-figure h2 { font-size: 80px; }
+  .cta.has-figure .link { margin-top: 56px; }
+
+  /* 글자가 넘친 카드는 미리보기에서 빨간 테두리로 표시 (캡처 모드에선 숨김) */
+  body:not(.capture) .card[data-overflow] { outline: 12px solid #dc2626; outline-offset: -12px; }
+  .error { padding: 40px; font-size: 18px; color: #b91c1c; }
+</style>
+</head>
+<body>
+<main class="deck" id="deck"></main>
+<script src="figures.js"></script>
+<script>
+  // 블로그 배포 URL이 정해지면 바꾼다 (README의 "배포 블로그 URL"과 같은 값)
+  const BLOG_URL = "summer-kim626.github.io/PM-blog";
+  const MAX = { headline: 20, body: 60, sub: 30 };
+
+  const params = new URLSearchParams(location.search);
+  const src = params.get("src") || "sample.json";
+  const scale = Math.min(Math.max(parseFloat(params.get("scale")) || 1, 0.1), 1);
+  document.documentElement.style.setProperty("--scale", scale);
+  document.body.classList.toggle("preview", scale < 1);
+  document.body.classList.toggle("capture", params.has("capture"));
+
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text; // 텍스트는 항상 textContent로 넣는다 (HTML 주입 방지)
+    return n;
+  };
+  const pad2 = n => String(n).padStart(2, "0");
+
+  function frame(card, i, total) {
+    const c = el("section", `card ${card.type}`);
+    c.dataset.index = i + 1;
+
+    const top = el("div", "top");
+    const logo = el("div", "logo", "PM");
+    logo.append(el("span", null, "."), "blog");
+    top.append(logo, el("div", "page", `${pad2(i + 1)} / ${pad2(total)}`));
+
+    const progress = el("div", "progress");
+    for (let k = 0; k < total; k++) progress.append(el("i", k <= i ? "on" : null));
+
+    const content = el("div", "content");
+    c.append(top, content, progress);
+    return { c, content };
+  }
+
+  function render(data) {
+    const cards = data.cards || [];
+    const total = cards.length;
+    let pointNo = 0;
+    const warnings = [];
+
+    cards.forEach((card, i) => {
+      const { c, content } = frame(card, i, total);
+
+      // 도형: 없거나 모르는 이름이면 도형 없이 기존 레이아웃으로 그린다
+      let fig = null;
+      if (card.figure) {
+        const svg = window.CardFigures && window.CardFigures.render(card.figure);
+        if (svg) {
+          fig = el("div", "figure");
+          fig.append(svg);
+          c.classList.add("has-figure");
+        } else {
+          warnings.push({ index: i + 1, type: "figure", shape: card.figure.shape });
+        }
+        for (const lb of card.figure.labels || []) {
+          if (String(lb).length > CardFigures.MAX_LABEL) {
+            warnings.push({ index: i + 1, type: "length", field: "figure.labels", length: String(lb).length, max: CardFigures.MAX_LABEL });
+          }
+        }
+      }
+
+      if (card.type === "cover") {
+        if (fig) content.append(fig);
+        if (data.category) content.append(el("div", "chip", data.category));
+        content.append(el("h1", null, card.headline));
+        if (card.sub) content.append(el("p", "sub", card.sub));
+        content.append(el("p", "swipe", "옆으로 넘겨서 보기 →"));
+      } else if (card.type === "cta") {
+        if (fig) content.append(fig);
+        content.append(el("h2", null, card.headline));
+        if (card.body) content.append(el("p", "body", card.body));
+        content.append(el("div", "link", `${BLOG_URL}  →`));
+        content.append(el("p", "handle", "프로필 링크에서 전문 보기"));
+      } else {
+        pointNo++;
+        content.append(el("div", "num", pad2(pointNo)));
+        content.append(el("h2", null, card.headline));
+        content.append(el("div", "rule"));
+        if (fig) content.append(fig);
+        if (card.body) content.append(el("p", "body", card.body));
+      }
+
+      // 글자 수 규칙(AGENTS.md 3-2) 위반 기록
+      for (const key of ["headline", "body", "sub"]) {
+        if (card[key] && card[key].length > MAX[key]) {
+          warnings.push({ index: i + 1, type: "length", field: key, length: card[key].length, max: MAX[key] });
+        }
+      }
+
+      const f = el("div", "frame");
+      f.append(c);
+      document.getElementById("deck").append(f);
+    });
+    return warnings;
+  }
+
+  // 실제로 넘쳤는지는 폰트 적용과 레이아웃이 끝난 뒤 확인한다
+  function checkOverflow(warnings) {
+    document.querySelectorAll(".card").forEach(c => {
+      const content = c.querySelector(".content");
+      if (content.scrollHeight > content.clientHeight + 1) {
+        c.dataset.overflow = "";
+        warnings.push({ index: Number(c.dataset.index), type: "overflow" });
+      }
+    });
+
+    window.__CARD_WARNINGS = warnings;
+    if (warnings.length) console.warn("카드 경고", warnings);
+  }
+
+  fetch(src)
+    .then(r => { if (!r.ok) throw new Error(`${src} 읽기 실패 (${r.status})`); return r.json(); })
+    .then(async data => {
+      const warnings = render(data);
+      await document.fonts.ready; // 폰트가 늦게 오면 줄바꿈이 달라지므로 다 받은 뒤 검사·캡처한다
+      checkOverflow(warnings);
+      window.__CARDS_READY = true;
+    })
+    .catch(err => {
+      document.getElementById("deck").append(el("p", "error", err.message));
+      window.__CARDS_ERROR = err.message;
+    });
+</script>
+</body>
+</html>
