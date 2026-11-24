@@ -210,9 +210,9 @@
     toastTimer = setTimeout(() => t.classList.remove("show"), 3200);
   }
 
-  async function copy(text, msg) {
+  async function copy(text, msg, failMsg = "복사하지 못했습니다. 직접 선택해 복사하세요.") {
     try { await navigator.clipboard.writeText(text); toast(msg); }
-    catch { toast("복사하지 못했습니다. 직접 선택해 복사하세요."); }
+    catch { toast(failMsg); }
   }
 
   // index.html 의 posts 배열에서 실제 글(url이 posts/…)만 뽑는다
@@ -289,8 +289,11 @@
       tdDown.append(bDown);
 
       const tdRegen = el("td", "act");
-      const bRegen = el("button", "btn", key === "none" ? "생성" : "재생성");
-      bRegen.type = "button";
+      // 일반 링크로 새 탭을 연다 (window.open은 팝업 차단에 걸릴 수 있다). 클릭하면 slug도 복사한다.
+      const bRegen = el("a", "btn", key === "none" ? "생성" : "재생성");
+      bRegen.href = WORKFLOW_URL;
+      bRegen.target = "_blank";
+      bRegen.rel = "noopener";
       bRegen.addEventListener("click", () => regenerate(post.slug));
       tdRegen.append(bRegen);
 
@@ -404,8 +407,7 @@
   }
 
   function regenerate(slug) {
-    copy(slug, `slug를 복사했습니다. Run workflow에 붙여넣으세요: ${slug}`);
-    window.open(WORKFLOW_URL, "_blank", "noopener");
+    copy(slug, `slug를 복사했습니다. Run workflow에 붙여넣으세요: ${slug}`, `Run workflow에 이 slug를 입력하세요: ${slug}`);
   }
 
   $("#preview").addEventListener("click", e => {
