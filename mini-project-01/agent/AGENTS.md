@@ -33,7 +33,8 @@
 
 ## 3. AI 생성 규칙 (F3)
 
-- 모델은 Google `gemini-3.8-flash`(무료 등급)를 쓴다. 다른 모델로 바꾸려면 먼저 사용자에게 묻는다.
+- 모델은 Google `gemini-3.8-flash`(무료 등급)를 쓴다. 503·429·시간 초과면 2회차는 대체 모델 `gemini-3.5-flash-lite`로 보낸다(`GEMINI_FALLBACK_MODEL`). 모델을 바꾸려면 먼저 사용자에게 묻는다.
+- `summary.json`의 `model`에는 실제로 만든 모델 이름을 남긴다.
 - 입력은 글의 `<article>` 안 텍스트만 쓴다. 글 1편당 호출은 재시도 포함 최대 2회.
 
 ### 3-1. 출력 JSON 스키마
