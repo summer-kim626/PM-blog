@@ -4,7 +4,7 @@
     "generated_at": "2026-11-24T05:29:14.813Z",
     "cards": 6,
     "warnings": [],
-    "error": "Gemini API 응답 없음 (120초 초과)",
-    "updated_at": "2026-11-24T06:20:58.372Z"
+    "error": "[gemini-3.5-flash-lite] Gemini API 503: This model is currently experiencing high demand. Spikes in demand are usually temporary. Please try again later.",
+    "updated_at": "2026-11-24T07:01:52.190Z"
   }
 }
