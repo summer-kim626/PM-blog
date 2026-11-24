@@ -6,7 +6,7 @@
 
 ## 1. 프로젝트 한 줄 요약
 
-`posts/*.html`에 새 글을 푸시하면 GitHub Actions가 AI로 **3줄 요약 + 인스타그램 카드뉴스(1080×1350, 5~7장) + 캡션·해시태그**를 만들어 `data/cardnews/<slug>/`에 커밋한다.
+`posts/*.html`에 새 글을 푸시하면 GitHub Actions가 AI로 **3줄 요약 + 인스타그램 카드뉴스(1080×1350, 5~7장) + 캡션·해시태그**를 만들어 `data/cardnews/<slug>/`에 커밋한다. 관리자는 `/admin`에서 상태를 보고 결과를 내려받는다.
 
 - 마감: **2026-11-25(수) 16:50**. 이 시각 이후 커밋은 제출되지 않는다.
 - 범위는 PRD 4.1(MoSCoW)을 따른다. **Won't 항목(인스타그램 자동 업로드)은 구현하지 않는다.**
@@ -20,6 +20,8 @@
 | `cardnews/template.html` | 카드 HTML 템플릿 (F4) | `?src=<JSON>&scale=<배율>`, 샘플은 `cardnews/sample.json` |
 | `cardnews/figures.js` | 카드 도형 라이브러리 | 전체 도형 확인: `template.html?scale=0.2&src=figures-test.json` |
 | `data/cardnews/<slug>/` | 생성 결과 (출력) | `summary.json`, `card-01.png` … |
+| `data/cardnews/index.json` | 글별 생성 상태 | `{ slug: { status, generated_at, cards, warnings, error } }`, status는 `done`·`warning`·`failed` |
+| `admin/index.html` | 관리자 페이지 `/admin` (F7) | 열: 글 제목 / 생성 유무 / 미리보기 / 다운로드 / 재생성 (PRD 4.3). 다운로드는 `<slug>-cardnews.zip`(PNG 전 장 + `caption.txt`, JSZip, D-010). 키·토큰을 다루지 않는다, `noindex` |
 | `.github/workflows/` | 자동화 | 기존 `update-weather.yml` 구조를 참고한다 |
 | `mini-project-01/` | 제출 문서 | PRD, 로그, 테스트 보고서, 스크린샷 |
 
@@ -27,6 +29,9 @@
 - 디자인 토큰은 각 HTML의 `:root` CSS 변수를 쓴다. 새 색상을 하드코딩하지 않는다.
 
 ## 3. AI 생성 규칙 (F3)
+
+- 모델은 Google `gemini-3.8-flash`(무료 등급)를 쓴다. 다른 모델로 바꾸려면 먼저 사용자에게 묻는다.
+- 입력은 글의 `<article>` 안 텍스트만 쓴다. 글 1편당 호출은 재시도 포함 최대 2회.
 
 ### 3-1. 출력 JSON 스키마
 
@@ -53,8 +58,8 @@
 - **본문에 없는 사실·수치·인용을 만들지 않는다.** 확실하지 않으면 빼는 쪽을 택한다.
 - 카드는 `cover` 1장 + `point` 3~5장 + `cta` 1장, 합계 5~7장.
 - 글자 수 제한: `headline` 20자, `body` 60자, `summary` 각 40자, 해시태그 5~10개.
-- 말투는 블로그 본문과 같은 한국어 평서체.
-- 응답은 JSON만 받는다. 파싱에 실패하면 1회 재시도하고, 그래도 실패하면 워크플로우를 실패로 끝낸다(빈 결과를 커밋하지 않는다).
+- 말투는 블로그 본문과 같은 한국어 합니다체(예: "기록합니다", "남깁니다").
+- 응답은 JSON만 받는다. 파싱에 실패하면 1회 재시도하고, 그래도 실패하면 워크플로우를 실패로 끝낸다. 빈 결과는 커밋하지 않고, `index.json`에 `failed` 상태와 오류 메시지만 남긴다.
 - 블로그에 노출할 때는 **"AI 초안"** 표기를 붙인다.
 
 ### 3-3. 카드 도형 (`figure`)
@@ -82,7 +87,7 @@
 
 ## 4. 보안 규칙
 
-- API 키는 **GitHub Secrets에만** 둔다. 코드·로그·커밋·브라우저 스크립트에 키를 넣지 않는다.
+- API 키는 **GitHub Secrets(`GEMINI_API_KEY`)에만** 둔다. 코드·로그·커밋·브라우저 스크립트에 키를 넣지 않는다.
 - 워크플로우에서 키가 비어 있으면 `::error::`로 알리고 바로 종료한다(날씨 워크플로우와 같은 방식).
 - API 원본 응답은 저장하지 않고 필요한 값만 남긴다.
 
