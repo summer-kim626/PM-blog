@@ -75,3 +75,7 @@ export function validate(data) {
 
   return { errors, warnings };
 }
+
+// 템플릿(cardnews/template.html)이 남긴 렌더링 경고를 한 줄 문장으로 (run.mjs·관리자 페이지 공용)
+export const formatRenderWarning = w =>
+  `카드 ${w.index}: ${w.type}${w.field ? ` ${w.field} ${w.length}/${w.max}자` : ""}${w.shape ? ` ${w.shape}` : ""}`;

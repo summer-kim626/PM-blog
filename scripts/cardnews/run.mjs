@@ -8,6 +8,7 @@ import path from "node:path";
 import { extractPost, ROOT } from "./extract.mjs";
 import { generate } from "./generate.mjs";
 import { render } from "./render.mjs";
+import { formatRenderWarning } from "./validate.mjs";
 
 const INDEX = path.join(ROOT, "data", "cardnews", "index.json");
 
@@ -33,9 +34,6 @@ async function updateIndex(slug, entry) {
   await mkdir(path.dirname(INDEX), { recursive: true });
   await writeFile(INDEX, JSON.stringify(sorted, null, 2) + "\n");
 }
-
-const formatRenderWarning = w =>
-  `카드 ${w.index}: ${w.type}${w.field ? ` ${w.field} ${w.length}/${w.max}자` : ""}${w.shape ? ` ${w.shape}` : ""}`;
 
 let failed = 0;
 for (const file of files) {
