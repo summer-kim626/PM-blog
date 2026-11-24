@@ -19,8 +19,8 @@ if (!files.length) {
   console.error("사용법: npm run cardnews -- posts/<파일>.html [--skip-ai]");
   process.exit(1);
 }
-if (!skipAi && !process.env.GEMINI_API_KEY) {
-  console.error("::error::GEMINI_API_KEY 가 없습니다. .env 파일이나 환경 변수로 설정하세요.");
+if (!skipAi && !process.env.ANTHROPIC_API_KEY) {
+  console.error("::error::ANTHROPIC_API_KEY 가 없습니다. .env 파일이나 환경 변수로 설정하세요.");
   process.exit(1);
 }
 

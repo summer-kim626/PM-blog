@@ -4,10 +4,15 @@
   "scripts": {
     "build:css": "tailwindcss -i src/tailwind.input.css -o assets/tailwind.css --minify",
     "watch:css": "tailwindcss -i src/tailwind.input.css -o assets/tailwind.css --watch",
-    "cardnews": "node --env-file-if-exists=.env scripts/cardnews/run.mjs"
+    "cardnews": "node --env-file-if-exists=.env scripts/cardnews/run.mjs",
+    "build:sdk": "echo 'export { default } from \"@anthropic-ai/sdk\";' | esbuild --bundle --format=esm --platform=browser --target=es2022 --minify --legal-comments=eof --outfile=assets/vendor/anthropic-sdk.mjs"
   },
   "devDependencies": {
+    "esbuild": "0.28.2",
     "playwright-core": "1.49.1",
     "tailwindcss": "3.4.17"
+  },
+  "dependencies": {
+    "@anthropic-ai/sdk": "1.7.0"
   }
 }
