@@ -15,6 +15,7 @@
 | D-008 | 2026-11-24 | 기획 | 관리자 페이지(`/admin`)에서 생성 상태·다운로드를 관리한다 |
 | D-009 | 2026-11-24 | 기획 | 자동 생성은 새 글만, 기존 글 재생성은 수동 실행으로 한다 |
 | D-010 | 2026-11-24 | 디자인 | 관리자 페이지 다운로드는 글별 ZIP 1개로 받는다 |
+| D-011 | 2026-11-24 | 개발 | F2~F4는 Node 스크립트(`scripts/cardnews/`)와 설치된 Chrome으로 구현한다 |
 
 ---
 
@@ -171,3 +172,22 @@
   - 관리자 페이지에서 JSZip을 cdnjs로 불러온다(버전 고정).
   - 장별 PNG 저장은 미리보기 팝업에서 할 수 있다.
   - PRD 4.1 Could에 있던 ZIP 다운로드를 F7(Must)로 옮겼다.
+
+## D-011. F2~F4 구현 방식과 소스 위치
+
+- **날짜:** 2026-11-24
+- **선택지**
+  - Python 스크립트 + Playwright(브라우저 내려받기 포함)
+  - Node 스크립트 + `playwright`(Chromium 내려받기 포함)
+  - Node 스크립트 + `playwright-core` + 이미 설치된 Chrome
+- **결정:** Node 스크립트 + `playwright-core`(1.49.1) + 설치된 Chrome, 위치는 `scripts/cardnews/`
+- **이유**
+  - 저장소에 이미 `package.json`이 있어 도구를 하나 더 늘리지 않는다.
+  - `playwright-core`는 브라우저를 내려받지 않는다. 로컬 Mac과 GitHub Actions(ubuntu-latest) 모두 Chrome이 설치돼 있다.
+  - F2(본문 추출)는 글 HTML 구조가 단순해 추가 라이브러리 없이 `<article>`만 잘라 처리한다.
+  - Gemini는 SDK 없이 REST API를 `fetch`로 부른다. 키는 URL이 아닌 헤더(`x-goog-api-key`)로 보내 로그에 남지 않게 한다.
+- **영향**
+  - 실행: `npm run cardnews -- posts/<파일>.html`. `--skip-ai`는 AI 호출 없이 PNG만 다시 그린다(PRD Could 항목을 미리 확보).
+  - 로컬 키는 `.env`(커밋 제외)에서 읽는다. Node 22 이상이 필요하다(`--env-file-if-exists`).
+  - 템플릿이 `fetch`로 JSON을 읽기 때문에, 렌더러가 저장소 루트를 임시 HTTP 서버(127.0.0.1)로 띄운다.
+  - 슬러그·제목·카테고리·생성 시각은 AI가 아니라 코드가 채운다. `summary.json`에 사용한 모델 이름(`model`)을 함께 남긴다.
