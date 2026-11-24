@@ -25,6 +25,7 @@
 | `data/cardnews/index.json` | 글별 생성 상태 | `{ slug: { status, generated_at, cards, warnings, error } }`, status는 `done`·`warning`·`failed` |
 | `admin/index.html` | 관리자 페이지 `/admin` (F7) | 열: 글 제목 / 생성 유무 / 미리보기 / 다운로드 / 재생성 (PRD 4.3). 다운로드는 `<slug>-cardnews.zip`(PNG 전 장 + `caption.txt`, JSZip, D-010). 키·토큰을 다루지 않는다, `noindex` |
 | `.github/workflows/` | 자동화 | 기존 `update-weather.yml` 구조를 참고한다 |
+| `.github/workflows/cardnews.yml` | F1·F5 워크플로우 | 새로 추가된 `posts/*.html` 푸시 시 실행. 재생성은 `workflow_dispatch`(slug, `skip_ai`). 실패해도 `index.json` 상태는 커밋 |
 | `mini-project-01/` | 제출 문서 | PRD, 로그, 테스트 보고서, 스크린샷 |
 
 - 소스코드의 새 위치가 생기면 의사결정 로그에 기록한다.
