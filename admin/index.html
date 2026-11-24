@@ -1,0 +1,420 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="robots" content="noindex, nofollow">
+<title>카드뉴스 관리 | PM Blog</title>
+<!--
+  F7 관리자 페이지 (/admin)
+  - 글 목록: ../index.html 의 posts 배열 (url이 posts/ 로 시작하는 글만)
+  - 생성 상태: ../data/cardnews/index.json
+  - 결과: ../data/cardnews/<slug>/summary.json, card-NN.png
+  - 이 페이지는 공개 파일만 읽는다. API 키·GitHub 토큰을 다루지 않는다.
+  - 재생성은 GitHub Actions 수동 실행 화면을 연다 (slug는 클립보드에 복사).
+-->
+<style>
+  :root {
+    --bg: #fafaf9; --surface: #ffffff; --text: #1c1917; --muted: #78716c;
+    --line: #e7e5e4; --accent: #ea580c; --accent-soft: #fff7ed;
+    --ok: #15803d; --ok-soft: #f0fdf4; --warn: #a16207; --warn-soft: #fefce8;
+    --danger: #b91c1c; --danger-soft: #fef2f2; --idle-soft: #f5f5f4;
+    --shadow: 0 10px 40px rgba(28, 25, 23, .18);
+    color-scheme: light;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0c0a09; --surface: #1c1917; --text: #f5f5f4; --muted: #a8a29e;
+      --line: #292524; --accent: #fb923c; --accent-soft: #2a1a10;
+      --ok: #4ade80; --ok-soft: #10261a; --warn: #facc15; --warn-soft: #2a240b;
+      --danger: #f87171; --danger-soft: #2c1212; --idle-soft: #242120;
+      --shadow: 0 10px 40px rgba(0, 0, 0, .6); color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0c0a09; --surface: #1c1917; --text: #f5f5f4; --muted: #a8a29e;
+    --line: #292524; --accent: #fb923c; --accent-soft: #2a1a10;
+    --ok: #4ade80; --ok-soft: #10261a; --warn: #facc15; --warn-soft: #2a240b;
+    --danger: #f87171; --danger-soft: #2c1212; --idle-soft: #242120;
+    --shadow: 0 10px 40px rgba(0, 0, 0, .6); color-scheme: dark;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, BlinkMacSystemFont, "Pretendard", "Apple SD Gothic Neo", "Noto Sans KR", sans-serif;
+    background: var(--bg); color: var(--text); line-height: 1.6; word-break: keep-all; }
+  a { color: inherit; }
+  button { font: inherit; color: inherit; }
+  .wrap { max-width: 1040px; margin: 0 auto; padding: 0 20px; }
+
+  header { border-bottom: 1px solid var(--line); }
+  nav { display: flex; justify-content: space-between; align-items: center; height: 64px; }
+  .logo { font-weight: 800; font-size: 18px; letter-spacing: -0.02em; text-decoration: none; }
+  .logo span { color: var(--accent); }
+  .logo small { font-size: 13px; font-weight: 600; color: var(--muted); margin-left: 8px; letter-spacing: 0; }
+  nav a.link { font-size: 14px; color: var(--muted); text-decoration: none; }
+  nav a.link:hover { color: var(--text); }
+
+  .intro { padding: 40px 0 24px; display: flex; flex-wrap: wrap; justify-content: space-between; align-items: flex-end; gap: 16px; }
+  h1 { font-size: clamp(24px, 4vw, 30px); letter-spacing: -0.03em; line-height: 1.3; }
+  .intro p { color: var(--muted); font-size: 14px; margin-top: 6px; }
+  .counts { display: flex; flex-wrap: wrap; gap: 8px; }
+
+  /* 상태 칩 */
+  .chip { display: inline-flex; align-items: center; gap: 6px; font-size: 13px; font-weight: 600;
+    padding: 3px 10px; border-radius: 999px; white-space: nowrap; }
+  .chip::before { content: ""; width: 7px; height: 7px; border-radius: 50%; background: currentColor; }
+  .chip.done { color: var(--ok); background: var(--ok-soft); }
+  .chip.warning { color: var(--warn); background: var(--warn-soft); }
+  .chip.failed { color: var(--danger); background: var(--danger-soft); }
+  .chip.none { color: var(--muted); background: var(--idle-soft); }
+
+  /* 표 */
+  .table { width: 100%; border-collapse: collapse; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; overflow: hidden; }
+  .table th { text-align: left; font-size: 12px; font-weight: 600; color: var(--muted); letter-spacing: .02em;
+    padding: 12px 16px; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  .table td { padding: 14px 16px; border-bottom: 1px solid var(--line); vertical-align: middle; font-size: 15px; }
+  .table tr:last-child td { border-bottom: none; }
+  .table th.act, .table td.act { width: 1%; white-space: nowrap; text-align: center; }
+  .title a { font-weight: 600; text-decoration: none; }
+  .title a:hover { color: var(--accent); }
+  .title .sub { display: block; font-size: 12px; color: var(--muted); margin-top: 2px; }
+  .status .when { display: block; font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .status .why { display: block; font-size: 12px; color: var(--danger); margin-top: 4px; max-width: 280px; }
+
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 6px; min-height: 36px;
+    padding: 6px 14px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface);
+    font-size: 14px; font-weight: 600; cursor: pointer; text-decoration: none; white-space: nowrap; }
+  .btn:hover:not(:disabled) { border-color: var(--accent); color: var(--accent); }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.primary { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .btn.primary:hover:not(:disabled) { color: #fff; filter: brightness(1.08); }
+  .btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  .empty, .error { padding: 32px; text-align: center; color: var(--muted); background: var(--surface);
+    border: 1px dashed var(--line); border-radius: 12px; }
+  .error { color: var(--danger); }
+  .help { margin: 20px 0 56px; font-size: 13px; color: var(--muted); }
+  .help li { margin: 4px 0 0 18px; }
+
+  /* 모바일: 표를 카드 목록으로 */
+  @media (max-width: 720px) {
+    .table, .table tbody, .table tr, .table td { display: block; width: 100%; }
+    .table thead { display: none; }
+    .table { border: none; background: none; }
+    .table tr { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; margin-bottom: 12px; }
+    .table td { border: none; padding: 0; }
+    .table td.status { margin: 8px 0 12px; }
+    .table td.act { display: inline-block; width: auto; margin-right: 6px; }
+  }
+
+  /* 미리보기 */
+  dialog { width: min(960px, calc(100vw - 32px)); max-height: calc(100vh - 48px); margin: auto; border: 1px solid var(--line);
+    border-radius: 16px; background: var(--surface); color: var(--text); box-shadow: var(--shadow); padding: 0; }
+  dialog::backdrop { background: rgba(12, 10, 9, .55); }
+  .dlg-head { position: sticky; top: 0; z-index: 1; display: flex; justify-content: space-between; align-items: flex-start; gap: 16px;
+    padding: 20px 24px 16px; background: var(--surface); border-bottom: 1px solid var(--line); }
+  .dlg-head h2 { font-size: 19px; letter-spacing: -0.02em; line-height: 1.35; }
+  .dlg-head p { font-size: 12px; color: var(--muted); margin-top: 4px; }
+  .dlg-body { padding: 20px 24px 28px; }
+  .dlg-body section { margin-bottom: 28px; }
+  .dlg-body h3 { font-size: 14px; color: var(--muted); font-weight: 600; margin-bottom: 10px;
+    display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+  .summary-box { background: var(--accent-soft); border-radius: 12px; padding: 14px 18px; }
+  .summary-box ol { margin-left: 20px; font-size: 15px; }
+  .strip { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 8px; scroll-snap-type: x mandatory; }
+  .strip figure { flex: none; width: 216px; scroll-snap-align: start; }
+  .strip img { display: block; width: 216px; aspect-ratio: 1080 / 1350; border-radius: 8px; border: 1px solid var(--line); background: var(--bg); }
+  .strip figcaption { display: flex; justify-content: space-between; align-items: center; margin-top: 6px; font-size: 12px; color: var(--muted); }
+  .strip figcaption a { color: var(--accent); font-weight: 600; text-decoration: none; }
+  .copy-box { white-space: pre-wrap; font-size: 14px; background: var(--bg); border: 1px solid var(--line); border-radius: 10px; padding: 12px 14px; }
+  .warn-list { font-size: 13px; color: var(--warn); margin-left: 18px; }
+  .notice { font-size: 13px; padding: 10px 14px; border-radius: 10px; margin-bottom: 20px; }
+  .notice.failed { color: var(--danger); background: var(--danger-soft); }
+  .x { border: none; background: none; font-size: 22px; line-height: 1; padding: 4px 8px; cursor: pointer; color: var(--muted); border-radius: 8px; }
+  .x:hover { color: var(--text); background: var(--idle-soft); }
+
+  .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(16px); opacity: 0;
+    background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-size: 14px;
+    box-shadow: var(--shadow); transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <nav>
+      <a class="logo" href="../">PM<span>.</span>blog<small>관리자</small></a>
+      <a class="link" href="https://github.com/summer-kim626/PM-blog/actions/workflows/cardnews.yml" target="_blank" rel="noopener">Actions ↗</a>
+    </nav>
+  </div>
+</header>
+
+<main class="wrap">
+  <div class="intro">
+    <div>
+      <h1>카드뉴스 관리</h1>
+      <p>새 글을 올리면 AI 요약과 인스타그램 카드뉴스가 자동으로 만들어집니다. 게시 전에 꼭 내용을 검토하세요.</p>
+    </div>
+    <div class="counts" id="counts" aria-live="polite"></div>
+  </div>
+
+  <div id="list"><div class="empty">불러오는 중…</div></div>
+
+  <ul class="help">
+    <li><b>재생성</b>을 누르면 slug가 복사되고 GitHub Actions 화면이 열립니다. <b>Run workflow</b>에 slug를 붙여넣어 실행하세요.</li>
+    <li>생성에는 몇 분이 걸립니다. 끝나면 이 페이지를 새로고침하세요.</li>
+  </ul>
+</main>
+
+<dialog id="preview" aria-labelledby="dlg-title">
+  <div class="dlg-head">
+    <div>
+      <h2 id="dlg-title"></h2>
+      <p id="dlg-meta"></p>
+    </div>
+    <button class="x" type="button" data-close aria-label="닫기">×</button>
+  </div>
+  <div class="dlg-body" id="dlg-body"></div>
+</dialog>
+
+<div class="toast" id="toast" role="status"></div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
+<script>
+  const WORKFLOW_URL = "https://github.com/summer-kim626/PM-blog/actions/workflows/cardnews.yml";
+  const STATUS = {
+    done: { label: "완료", cls: "done" },
+    warning: { label: "경고", cls: "warning" },
+    failed: { label: "실패", cls: "failed" },
+    none: { label: "미생성", cls: "none" },
+  };
+
+  const $ = s => document.querySelector(s);
+  const el = (tag, cls, text) => {
+    const n = document.createElement(tag);
+    if (cls) n.className = cls;
+    if (text != null) n.textContent = text; // 데이터는 항상 텍스트로만 넣는다
+    return n;
+  };
+  const pad2 = n => String(n).padStart(2, "0");
+  const fmt = iso => iso ? new Date(iso).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
+  const base = slug => `../data/cardnews/${slug}/`;
+  const cardFiles = n => Array.from({ length: n }, (_, i) => `card-${pad2(i + 1)}.png`);
+
+  let toastTimer;
+  function toast(msg) {
+    const t = $("#toast");
+    t.textContent = msg;
+    t.classList.add("show");
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => t.classList.remove("show"), 3200);
+  }
+
+  async function copy(text, msg) {
+    try { await navigator.clipboard.writeText(text); toast(msg); }
+    catch { toast("복사하지 못했습니다. 직접 선택해 복사하세요."); }
+  }
+
+  // index.html 의 posts 배열에서 실제 글(url이 posts/…)만 뽑는다
+  function parsePosts(html) {
+    const posts = [];
+    for (const m of html.matchAll(/\{[^{}]*?url:\s*"posts\/([^"]+)\.html"[^{}]*\}/g)) {
+      const get = k => (m[0].match(new RegExp(`${k}:\\s*"([^"]*)"`)) || [])[1] || "";
+      posts.push({ slug: m[1], date: get("date"), cat: get("cat"), title: get("title") });
+    }
+    return posts.sort((a, b) => b.slug.localeCompare(a.slug));
+  }
+
+  // 미리보기·다운로드할 결과가 있는가: 완료·경고, 또는 실패했지만 이전 결과가 남아 있는 경우
+  const hasResult = s => s && s.cards > 0 && (s.status !== "failed" || s.generated_at);
+
+  async function load() {
+    const [html, index] = await Promise.all([
+      fetch("../index.html", { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error("글 목록을 읽지 못했습니다"); return r.text(); }),
+      fetch("../data/cardnews/index.json", { cache: "no-cache" }).then(r => (r.ok ? r.json() : {})).catch(() => ({})),
+    ]);
+    const posts = parsePosts(html);
+    render(posts, index);
+  }
+
+  function render(posts, index) {
+    const list = $("#list");
+    list.replaceChildren();
+    if (!posts.length) { list.append(el("div", "empty", "등록된 글이 없습니다.")); return; }
+
+    const counts = { done: 0, warning: 0, failed: 0, none: 0 };
+    const table = el("table", "table");
+    const thead = el("thead");
+    const hr = el("tr");
+    [["글 제목"], ["AI 요약(카드뉴스) 생성 유무"], ["미리보기", "act"], ["다운로드", "act"], ["재생성", "act"]]
+      .forEach(([t, c]) => { const th = el("th", c, t); th.scope = "col"; hr.append(th); });
+    thead.append(hr);
+    const tbody = el("tbody");
+
+    for (const post of posts) {
+      const s = index[post.slug];
+      const key = s?.status in STATUS ? s.status : "none";
+      counts[key]++;
+      const tr = el("tr");
+
+      const tdTitle = el("td", "title");
+      const a = el("a", null, post.title || post.slug);
+      a.href = `../posts/${post.slug}.html`;
+      tdTitle.append(a, el("span", "sub", [post.date, post.cat].filter(Boolean).join(" · ")));
+
+      const tdStatus = el("td", "status");
+      const chip = el("span", `chip ${STATUS[key].cls}`, STATUS[key].label);
+      if (s?.warnings?.length) chip.title = s.warnings.join("\n");
+      tdStatus.append(chip);
+      if (key === "done" || key === "warning") tdStatus.append(el("span", "when", `${fmt(s.generated_at)} · ${s.cards}장${s.warnings?.length ? ` · 경고 ${s.warnings.length}건` : ""}`));
+      if (key === "failed") {
+        tdStatus.append(el("span", "why", s.error || "원인 미상"));
+        if (hasResult(s)) tdStatus.append(el("span", "when", `이전 결과 ${fmt(s.generated_at)} · ${s.cards}장`));
+      }
+
+      const ready = hasResult(s);
+      const tdPrev = el("td", "act");
+      const bPrev = el("button", "btn", "미리보기");
+      bPrev.type = "button";
+      bPrev.disabled = !ready;
+      bPrev.addEventListener("click", () => openPreview(post, s));
+      tdPrev.append(bPrev);
+
+      const tdDown = el("td", "act");
+      const bDown = el("button", "btn primary", "ZIP 받기");
+      bDown.type = "button";
+      bDown.disabled = !ready;
+      bDown.setAttribute("aria-label", `${post.title} 카드뉴스 ZIP 다운로드`);
+      bDown.addEventListener("click", () => downloadZip(post, s, bDown));
+      tdDown.append(bDown);
+
+      const tdRegen = el("td", "act");
+      const bRegen = el("button", "btn", key === "none" ? "생성" : "재생성");
+      bRegen.type = "button";
+      bRegen.addEventListener("click", () => regenerate(post.slug));
+      tdRegen.append(bRegen);
+
+      tr.append(tdTitle, tdStatus, tdPrev, tdDown, tdRegen);
+      tbody.append(tr);
+    }
+    table.append(thead, tbody);
+    list.append(table);
+
+    const c = $("#counts");
+    c.replaceChildren(...Object.entries(counts).filter(([, n]) => n).map(([k, n]) => el("span", `chip ${STATUS[k].cls}`, `${STATUS[k].label} ${n}`)));
+  }
+
+  async function openPreview(post, s) {
+    const dlg = $("#preview");
+    const body = $("#dlg-body");
+    $("#dlg-title").textContent = post.title || post.slug;
+    $("#dlg-meta").textContent = "";
+    body.replaceChildren(el("p", null, "불러오는 중…"));
+    dlg.showModal();
+
+    try {
+      const data = await fetch(base(post.slug) + "summary.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(); return r.json(); });
+      $("#dlg-meta").textContent = [`생성 ${fmt(data.generated_at)}`, data.model, `${s.cards}장`].filter(Boolean).join(" · ");
+      body.replaceChildren();
+
+      if (s.status === "failed") body.append(el("p", "notice failed", `최근 재생성은 실패했습니다: ${s.error || "원인 미상"}. 아래는 이전에 만든 결과입니다.`));
+
+      const sum = el("section");
+      sum.append(el("h3", null, "3줄 요약"));
+      const box = el("div", "summary-box");
+      const ol = el("ol");
+      (data.summary || []).forEach(t => ol.append(el("li", null, t)));
+      box.append(ol);
+      sum.append(box);
+
+      const cards = el("section");
+      const h = el("h3", null, `카드 ${s.cards}장`);
+      cards.append(h);
+      const strip = el("div", "strip");
+      cardFiles(s.cards).forEach((f, i) => {
+        const fig = el("figure");
+        const img = el("img");
+        img.src = base(post.slug) + f + `?v=${encodeURIComponent(data.generated_at || "")}`;
+        img.alt = `${i + 1}번 카드: ${data.cards?.[i]?.headline || ""}`;
+        img.loading = "lazy";
+        const cap = el("figcaption");
+        const save = el("a", null, "PNG 저장");
+        save.href = base(post.slug) + f;
+        save.download = `${post.slug}-${f}`;
+        cap.append(el("span", null, `${pad2(i + 1)} / ${pad2(s.cards)}`), save);
+        fig.append(img, cap);
+        strip.append(fig);
+      });
+      cards.append(strip);
+
+      const caption = el("section");
+      const capH = el("h3", null, "캡션");
+      const capBtn = el("button", "btn", "복사");
+      capBtn.type = "button";
+      capBtn.addEventListener("click", () => copy(captionText(data), "캡션과 해시태그를 복사했습니다"));
+      capH.append(capBtn);
+      caption.append(capH, el("div", "copy-box", captionText(data)));
+
+      body.append(sum, cards, caption);
+
+      if (s.warnings?.length) {
+        const w = el("section");
+        w.append(el("h3", null, `경고 ${s.warnings.length}건`));
+        const ul = el("ul", "warn-list");
+        s.warnings.forEach(t => ul.append(el("li", null, t)));
+        w.append(ul);
+        body.append(w);
+      }
+    } catch {
+      body.replaceChildren(el("p", "notice failed", "결과 파일을 읽지 못했습니다."));
+    }
+  }
+
+  const captionText = d => [d.caption || "", (d.hashtags || []).join(" ")].filter(Boolean).join("\n\n");
+
+  async function downloadZip(post, s, btn) {
+    if (!window.JSZip) { toast("압축 도구를 불러오지 못했습니다. 잠시 뒤 다시 시도하세요."); return; }
+    const label = btn.textContent;
+    btn.disabled = true;
+    btn.textContent = "압축 중…";
+    try {
+      const zip = new JSZip();
+      const files = cardFiles(s.cards);
+      const [data, ...pngs] = await Promise.all([
+        fetch(base(post.slug) + "summary.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error("summary.json"); return r.json(); }),
+        ...files.map(f => fetch(base(post.slug) + f, { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(f); return r.blob(); })),
+      ]);
+      files.forEach((f, i) => zip.file(f, pngs[i]));
+      zip.file("caption.txt", captionText(data) + "\n");
+      const blob = await zip.generateAsync({ type: "blob" });
+      const a = el("a");
+      a.href = URL.createObjectURL(blob);
+      a.download = `${post.slug}-cardnews.zip`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(a.href), 10000);
+      toast(`${post.slug}-cardnews.zip 을 내려받았습니다`);
+    } catch (e) {
+      toast(`내려받지 못했습니다 (${e.message} 읽기 실패)`);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = label;
+    }
+  }
+
+  function regenerate(slug) {
+    copy(slug, `slug를 복사했습니다. Run workflow에 붙여넣으세요: ${slug}`);
+    window.open(WORKFLOW_URL, "_blank", "noopener");
+  }
+
+  $("#preview").addEventListener("click", e => {
+    if (e.target.matches("[data-close]") || e.target === e.currentTarget) e.currentTarget.close();
+  });
+
+  load().catch(err => {
+    $("#list").replaceChildren(el("div", "error", `불러오지 못했습니다: ${err.message}`));
+  });
+</script>
+</body>
+</html>
