@@ -6,10 +6,13 @@ import { extractPost } from "./extract.mjs";
 import { validate, SHAPES, LIMITS } from "./validate.mjs";
 
 export const MODEL = process.env.GEMINI_MODEL || "gemini-3.8-flash";
-const ENDPOINT = `https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent`;
-const MAX_CALLS = 2; // 첫 호출 + 재시도 1회
+// 기본 모델이 과부하(503)·한도(429)·시간 초과면 2회차는 이 모델로 보낸다. 빈 값이면 대체하지 않는다.
+export const FALLBACK_MODEL = process.env.GEMINI_FALLBACK_MODEL ?? "gemini-3.5-flash-lite";
+const endpoint = model => `https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent`;
+const MAX_CALLS = 2; // 첫 호출 + 재시도 1회 (대체 모델로 넘어가는 경우 포함)
 const CALL_TIMEOUT_MS = Number(process.env.GEMINI_TIMEOUT_MS) || 120_000; // 응답이 없으면 끊는다
-const RETRY_WAIT_MS = 15_000; // 503(과부하)·429(한도)·시간 초과는 잠시 기다렸다 재시도한다
+const THINKING = process.env.GEMINI_THINKING ?? "low"; // 빈 값이면 모델 기본값
+const RETRY_WAIT_MS = 15_000; // 대체 모델 없이 같은 모델로 재시도할 때, 과부하면 잠시 기다린다
 
 const FIGURE_GUIDE = `
 | shape | 언제 쓰나 | labels |
@@ -66,13 +69,18 @@ ${FIGURE_GUIDE}
 ${post.text}`;
 }
 
-async function callGemini(prompt, apiKey) {
-  const res = await fetch(ENDPOINT, {
+async function callGemini(model, prompt, apiKey) {
+  const res = await fetch(endpoint(model), {
     method: "POST",
     headers: { "Content-Type": "application/json", "x-goog-api-key": apiKey }, // 키는 URL이 아닌 헤더로 보낸다
     body: JSON.stringify({
       contents: [{ role: "user", parts: [{ text: prompt }] }],
-      generationConfig: { responseMimeType: "application/json", temperature: 0.4 },
+      generationConfig: {
+        responseMimeType: "application/json",
+        temperature: 0.4,
+        // 요약·짧은 카피라 깊은 추론이 필요 없다. 기본값(high)은 응답이 2분을 넘기도 해 낮춘다.
+        ...(THINKING ? { thinkingConfig: { thinkingLevel: THINKING } } : {}),
+      },
     }),
     signal: AbortSignal.timeout(CALL_TIMEOUT_MS),
   }).catch(e => {
@@ -102,9 +110,10 @@ export async function generate(post, { apiKey = process.env.GEMINI_API_KEY, log 
 
   const prompt = buildPrompt(post);
   let lastError;
+  let model = MODEL;
   for (let attempt = 1; attempt <= MAX_CALLS; attempt++) {
     try {
-      const data = parseJson(await callGemini(prompt, apiKey));
+      const data = parseJson(await callGemini(model, prompt, apiKey));
       const { errors, warnings } = validate(data);
       if (errors.length) throw new Error(`형식 오류: ${errors.join(" / ")}`);
 
@@ -117,18 +126,25 @@ export async function generate(post, { apiKey = process.env.GEMINI_API_KEY, log 
         cards: data.cards,
         caption: data.caption,
         hashtags: data.hashtags,
-        model: MODEL,
+        model, // 실제로 만든 모델 (대체 모델이면 그 이름)
         generated_at: new Date().toISOString(),
       };
       return { result, warnings, attempts: attempt };
     } catch (e) {
-      lastError = e;
+      lastError = Object.assign(e, { message: `[${model}] ${e.message}` });
       // 인증·권한·모델 없음(4xx, 429 제외)은 다시 불러도 같으므로 바로 멈춘다
       if (e.status && e.status >= 400 && e.status < 500 && e.status !== 429) break;
       if (attempt < MAX_CALLS) {
-        const wait = e.transient || e.status === 429 || e.status >= 500 ? RETRY_WAIT_MS : 0;
-        log(`  ${attempt}회차 실패, ${wait ? `${wait / 1000}초 뒤 ` : ""}재시도합니다: ${e.message}`);
-        if (wait) await new Promise(r => setTimeout(r, wait));
+        const busy = e.transient || e.status === 429 || e.status >= 500;
+        if (busy && FALLBACK_MODEL && FALLBACK_MODEL !== model) {
+          // 과부하는 같은 모델로 다시 보내도 또 실패하기 쉬우므로 다른 모델로 바로 넘어간다
+          log(`  ${attempt}회차 실패, 대체 모델 ${FALLBACK_MODEL}로 재시도합니다: ${e.message}`);
+          model = FALLBACK_MODEL;
+        } else {
+          // 형식 오류 등은 같은 모델로 한 번 더
+          log(`  ${attempt}회차 실패, ${busy ? `${RETRY_WAIT_MS / 1000}초 뒤 ` : ""}재시도합니다: ${e.message}`);
+          if (busy) await new Promise(r => setTimeout(r, RETRY_WAIT_MS));
+        }
       }
     }
   }

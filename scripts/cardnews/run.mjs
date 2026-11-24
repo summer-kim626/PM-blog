@@ -60,7 +60,7 @@ for (const file of files) {
       warnings = w;
       await mkdir(path.join(ROOT, dir), { recursive: true });
       await writeFile(jsonAbs, JSON.stringify(result, null, 2) + "\n");
-      console.log(`  F3 생성: 카드 ${result.cards.length}장, 호출 ${attempts}회 → ${json}`);
+      console.log(`  F3 생성: 카드 ${result.cards.length}장, 호출 ${attempts}회, 모델 ${result.model} → ${json}`);
     }
 
     const { files: pngs, warnings: renderWarnings } = await render(json, dir); // F4
