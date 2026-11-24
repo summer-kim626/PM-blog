@@ -19,6 +19,8 @@
 | `index.html` | 메인 페이지, `posts` 배열 | 글 목록 데이터가 스크립트 안에 있다 |
 | `cardnews/template.html` | 카드 HTML 템플릿 (F4) | `?src=<JSON>&scale=<배율>`, 샘플은 `cardnews/sample.json` |
 | `cardnews/figures.js` | 카드 도형 라이브러리 | 전체 도형 확인: `template.html?scale=0.2&src=figures-test.json` |
+| `scripts/cardnews/` | F2~F4 스크립트 | `extract`(F2) · `generate`+`validate`(F3) · `render`(F4) · `run`(전체). 실행: `npm run cardnews -- posts/<파일>.html [--skip-ai]` |
+| `.env` | 로컬 실행용 키 | `.env.example`을 복사해 쓴다. 커밋하지 않는다(`.gitignore`) |
 | `data/cardnews/<slug>/` | 생성 결과 (출력) | `summary.json`, `card-01.png` … |
 | `data/cardnews/index.json` | 글별 생성 상태 | `{ slug: { status, generated_at, cards, warnings, error } }`, status는 `done`·`warning`·`failed` |
 | `admin/index.html` | 관리자 페이지 `/admin` (F7) | 열: 글 제목 / 생성 유무 / 미리보기 / 다운로드 / 재생성 (PRD 4.3). 다운로드는 `<slug>-cardnews.zip`(PNG 전 장 + `caption.txt`, JSZip, D-010). 키·토큰을 다루지 않는다, `noindex` |
