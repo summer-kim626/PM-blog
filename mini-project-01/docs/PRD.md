@@ -2,7 +2,7 @@
 
 ## 1. 기본 정보
 
-- **문서 버전**: v1.0
+- **문서 버전**: v1.1
 - **작성일**: 2026-11-24
 - **작성자**: 김승엽 / AIPM 실습
 - **관련 문서**: [README](../README.md), [에이전트 지침](../agent/AGENTS.md), [의사결정 로그](../logs/decision-log.md), [테스트 보고서](./test-report.md)
@@ -105,7 +105,7 @@
 
 | 항목       | 내용                                                                                           |
 | ---------- | ---------------------------------------------------------------------------------------------- |
-| AI 모델    | Google `gemini-3.8-flash` (무료 등급). 키는 GitHub Secret `GEMINI_API_KEY`               |
+| AI 모델    | Google `gemini-3.8-flash` (무료 등급), 과부하·시간 초과 시 `gemini-3.5-flash-lite`로 대체. 키는 GitHub Secret `GEMINI_API_KEY` |
 | 실행 환경  | GitHub Actions (`.github/workflows/cardnews.yml`), 트리거: `push`(paths `posts/**`) + `workflow_dispatch` |
 | 렌더링     | 헤드리스 브라우저로 `template.html?capture` 캡처. 글꼴 CDN 때문에 인터넷 연결 필요              |
 | 블로그     | 정적 HTML. `summary.json`을 `fetch`로 읽으므로 배포 주소(HTTP)에서 동작, `file://`에서는 동작 안 함 |
