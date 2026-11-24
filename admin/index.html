@@ -4,14 +4,17 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <meta name="robots" content="noindex, nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net; font-src 'self' https://cdn.jsdelivr.net data:; img-src 'self' blob: data:; connect-src 'self' blob: data: https://api.anthropic.com https://api.github.com https://cdn.jsdelivr.net; frame-src 'self'; object-src 'none'; base-uri 'none'; form-action 'none'">
+<meta name="referrer" content="no-referrer">
 <title>카드뉴스 관리 | PM Blog</title>
 <!--
-  F7 관리자 페이지 (/admin)
+  F7 관리자 페이지 (/admin) — 카드뉴스 생성(F2~F5)도 이 페이지에서 직접 실행한다 (D-014)
   - 글 목록: ../index.html 의 posts 배열 (url이 posts/ 로 시작하는 글만)
   - 생성 상태: ../data/cardnews/index.json
   - 결과: ../data/cardnews/<slug>/summary.json, card-NN.png
-  - 이 페이지는 공개 파일만 읽는다. API 키·GitHub 토큰을 다루지 않는다.
-  - 재생성은 GitHub Actions 수동 실행 화면을 연다 (slug는 클립보드에 복사).
+  - 생성: 본문 추출(parse.mjs) → Claude 호출(ai.mjs, SDK는 ../assets/vendor/anthropic-sdk.mjs) → 카드 PNG(template.html + html-to-image) → GitHub API 커밋
+  - 키: 사용자가 입력한 Claude API 키·GitHub 토큰은 이 탭의 sessionStorage에만 둔다.
+        Claude 키는 api.anthropic.com, 토큰은 api.github.com 으로만 보낸다. 코드·커밋에 넣지 않는다.
 -->
 <style>
   :root {
@@ -133,6 +136,40 @@
   .x { border: none; background: none; font-size: 22px; line-height: 1; padding: 4px 8px; cursor: pointer; color: var(--muted); border-radius: 8px; }
   .x:hover { color: var(--text); background: var(--idle-soft); }
 
+  /* API 키 */
+  .keys { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; margin-bottom: 20px; }
+  .keys summary { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; cursor: pointer; list-style: none; font-weight: 700; }
+  .keys summary::-webkit-details-marker { display: none; }
+  .keys summary::after { content: "▾"; margin-left: auto; color: var(--muted); font-weight: 400; }
+  .keys[open] summary::after { content: "▴"; }
+  .keys form { display: grid; grid-template-columns: 1fr 1fr auto; gap: 12px; align-items: end; margin-top: 16px; }
+  .keys label { display: flex; flex-direction: column; gap: 6px; font-size: 13px; font-weight: 600; min-width: 0; }
+  .keys label small { font-weight: 400; color: var(--muted); }
+  .keys input { font: inherit; font-size: 14px; color: var(--text); background: var(--bg); border: 1px solid var(--line);
+    border-radius: 8px; padding: 8px 12px; min-height: 38px; width: 100%; }
+  .keys input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .keys .row { display: flex; gap: 8px; }
+  .keys .note { font-size: 12px; color: var(--muted); margin-top: 12px; }
+  @media (max-width: 720px) { .keys form { grid-template-columns: 1fr; } }
+
+  /* 생성 진행 */
+  .steps { list-style: none; display: grid; gap: 10px; }
+  .steps li { display: flex; gap: 12px; align-items: flex-start; font-size: 15px; }
+  .steps li::before { content: ""; flex: none; width: 20px; height: 20px; margin-top: 2px; border-radius: 50%;
+    border: 2px solid var(--line); box-sizing: border-box; }
+  .steps li.active::before { border-color: var(--accent); border-top-color: transparent; animation: spin .8s linear infinite; }
+  .steps li.done::before { border-color: var(--ok); background: var(--ok); }
+  .steps li.failed::before { border-color: var(--danger); background: var(--danger); }
+  .steps li.skipped::before { border-style: dashed; }
+  .steps li.pending, .steps li.skipped { color: var(--muted); }
+  .steps li .why { display: block; font-size: 12px; color: var(--muted); }
+  .steps li.failed .why { color: var(--danger); }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .steps li.active::before { animation: none; border-top-color: var(--accent); } }
+  .notice.ok { color: var(--ok); background: var(--ok-soft); }
+  .notice.warn { color: var(--warn); background: var(--warn-soft); }
+  .render-box { position: fixed; left: -20000px; top: 0; width: 1080px; height: 1350px; border: 0; }
+
   .toast { position: fixed; left: 50%; bottom: 24px; transform: translateX(-50%) translateY(16px); opacity: 0;
     background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-size: 14px;
     box-shadow: var(--shadow); transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; }
@@ -144,7 +181,7 @@
   <div class="wrap">
     <nav>
       <a class="logo" href="../">PM<span>.</span>blog<small>관리자</small></a>
-      <a class="link" href="https://github.com/summer-kim626/PM-blog/actions/workflows/cardnews.yml" target="_blank" rel="noopener">Actions ↗</a>
+      <a class="link" href="https://github.com/summer-kim626/PM-blog/commits/main/data/cardnews" target="_blank" rel="noopener">생성 기록 ↗</a>
     </nav>
   </div>
 </header>
@@ -153,16 +190,34 @@
   <div class="intro">
     <div>
       <h1>카드뉴스 관리</h1>
-      <p>새 글을 올리면 AI 요약과 인스타그램 카드뉴스가 자동으로 만들어집니다. 게시 전에 꼭 내용을 검토하세요.</p>
+      <p>API 키를 넣고 <b>생성</b>을 누르면 AI 요약과 인스타그램 카드뉴스를 만들어 저장소에 올립니다. 게시 전에 꼭 내용을 검토하세요.</p>
     </div>
     <div class="counts" id="counts" aria-live="polite"></div>
   </div>
 
+  <details class="keys" id="keys">
+    <summary>API 키 <span id="key-state"></span></summary>
+    <form id="key-form" autocomplete="off">
+      <label>Claude API 키
+        <input type="password" id="ai-key" name="anthropic" spellcheck="false" autocomplete="off" placeholder="sk-ant-…">
+      </label>
+      <label>GitHub 토큰 <small>결과를 저장소에 커밋할 때 필요</small>
+        <input type="password" id="gh-token" name="github" spellcheck="false" autocomplete="off" placeholder="github_pat_…">
+      </label>
+      <div class="row">
+        <button class="btn primary" type="submit">저장</button>
+        <button class="btn" type="button" id="key-clear">지우기</button>
+      </div>
+    </form>
+    <p class="note">키는 이 탭에만 보관되고 탭을 닫으면 지워집니다. Claude 키는 Anthropic API로, GitHub 토큰은 GitHub API로만 전송됩니다. 호출 요금은 입력한 키의 계정에 청구됩니다.
+      토큰은 <b>이 저장소만</b> 선택한 fine-grained 토큰(Contents: Read and write)을 쓰세요. 토큰이 없으면 미리보기·ZIP만 됩니다.</p>
+  </details>
+
   <div id="list"><div class="empty">불러오는 중…</div></div>
 
   <ul class="help">
-    <li><b>재생성</b>을 누르면 slug가 복사되고 GitHub Actions 화면이 열립니다. <b>Run workflow</b>에 slug를 붙여넣어 실행하세요.</li>
-    <li>생성에는 몇 분이 걸립니다. 끝나면 이 페이지를 새로고침하세요.</li>
+    <li><b>생성·재생성</b>은 이 브라우저에서 바로 실행됩니다. 1~2분 걸리니 끝날 때까지 탭을 닫지 마세요.</li>
+    <li>커밋 후 블로그(GitHub Pages)에 반영되기까지 1~2분 더 걸립니다. 그 전에도 이 탭에서는 새 결과를 미리볼 수 있습니다.</li>
   </ul>
 </main>
 
@@ -179,9 +234,21 @@
 
 <div class="toast" id="toast" role="status"></div>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" defer></script>
-<script>
-  const WORKFLOW_URL = "https://github.com/summer-kim626/PM-blog/actions/workflows/cardnews.yml";
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js" integrity="sha384-+mbV2IY1Zk/X1p/nWllGySJSUN8uMs+gUAN10Or95UBH0fpj6GfKgPmgC5EXieXG" crossorigin="anonymous" defer></script>
+<!-- ai.mjs의 "@anthropic-ai/sdk"를 저장소에 둔 번들로 연결한다 (npm run build:sdk 로 생성, 외부 CDN 없음) -->
+<script type="importmap">{ "imports": { "@anthropic-ai/sdk": "../assets/vendor/anthropic-sdk.mjs" } }</script>
+<script type="module">
+  import { parsePost } from "../scripts/cardnews/parse.mjs";
+  import { generate } from "../scripts/cardnews/ai.mjs";
+  import { formatRenderWarning } from "../scripts/cardnews/validate.mjs";
+
+  const REPO = { owner: "summer-kim626", name: "PM-blog", branch: "main" };
+  // 카드 캡처 라이브러리: 템플릿 iframe 안에 넣어 .card를 PNG로 바꾼다 (버전·해시 고정)
+  const HTML_TO_IMAGE = {
+    src: "https://cdn.jsdelivr.net/npm/html-to-image@1.11.11/dist/html-to-image.js",
+    integrity: "sha384-UbfRVKN3/elS1r7JcK2FhmPP+KlJ4CvYwbyYD7tH+uTkbT9bNJr9eJeQ0FoFbAgz",
+  };
+  const KEYS = { ai: "cardnews.anthropicKey", github: "cardnews.githubToken" };
   const STATUS = {
     done: { label: "완료", cls: "done" },
     warning: { label: "경고", cls: "warning" },
@@ -200,6 +267,17 @@
   const fmt = iso => iso ? new Date(iso).toLocaleString("ko-KR", { month: "numeric", day: "numeric", hour: "2-digit", minute: "2-digit" }) : "";
   const base = slug => `../data/cardnews/${slug}/`;
   const cardFiles = n => Array.from({ length: n }, (_, i) => `card-${pad2(i + 1)}.png`);
+  const captionText = d => [d.caption || "", (d.hashtags || []).join(" ")].filter(Boolean).join("\n\n");
+
+  // ── 키 보관: 이 탭(sessionStorage)에만. 막혀 있으면 메모리에만 둔다 ──
+  const memory = {};
+  const secret = {
+    get: k => { try { return sessionStorage.getItem(k) || ""; } catch { return memory[k] || ""; } },
+    set: (k, v) => {
+      memory[k] = v;
+      try { v ? sessionStorage.setItem(k, v) : sessionStorage.removeItem(k); } catch { /* 메모리만 사용 */ }
+    },
+  };
 
   let toastTimer;
   function toast(msg) {
@@ -215,6 +293,11 @@
     catch { toast(failMsg); }
   }
 
+  // ── 상태 ──
+  const state = { posts: [], index: {}, indexHtml: "", busy: null };
+  // 이 탭에서 방금 만든 결과. Pages 배포 전에도 미리보기·ZIP에 쓴다. { slug: { data, blobs, urls } }
+  const local = {};
+
   // index.html 의 posts 배열에서 실제 글(url이 posts/…)만 뽑는다
   function parsePosts(html) {
     const posts = [];
@@ -226,18 +309,21 @@
   }
 
   // 미리보기·다운로드할 결과가 있는가: 완료·경고, 또는 실패했지만 이전 결과가 남아 있는 경우
-  const hasResult = s => s && s.cards > 0 && (s.status !== "failed" || s.generated_at);
+  const hasResult = (slug, s) => !!local[slug] || (s && s.cards > 0 && (s.status !== "failed" || s.generated_at));
 
   async function load() {
     const [html, index] = await Promise.all([
       fetch("../index.html", { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error("글 목록을 읽지 못했습니다"); return r.text(); }),
       fetch("../data/cardnews/index.json", { cache: "no-cache" }).then(r => (r.ok ? r.json() : {})).catch(() => ({})),
     ]);
-    const posts = parsePosts(html);
-    render(posts, index);
+    state.indexHtml = html;
+    state.posts = parsePosts(html);
+    state.index = index;
+    render();
   }
 
-  function render(posts, index) {
+  function render() {
+    const { posts, index } = state;
     const list = $("#list");
     list.replaceChildren();
     if (!posts.length) { list.append(el("div", "empty", "등록된 글이 없습니다.")); return; }
@@ -269,15 +355,16 @@
       if (key === "done" || key === "warning") tdStatus.append(el("span", "when", `${fmt(s.generated_at)} · ${s.cards}장${s.warnings?.length ? ` · 경고 ${s.warnings.length}건` : ""}`));
       if (key === "failed") {
         tdStatus.append(el("span", "why", s.error || "원인 미상"));
-        if (hasResult(s)) tdStatus.append(el("span", "when", `이전 결과 ${fmt(s.generated_at)} · ${s.cards}장`));
+        if (hasResult(post.slug, s)) tdStatus.append(el("span", "when", `이전 결과 ${fmt(s.generated_at)} · ${s.cards}장`));
       }
+      if (state.busy === post.slug) tdStatus.append(el("span", "when", "생성 중…"));
 
-      const ready = hasResult(s);
+      const ready = hasResult(post.slug, s);
       const tdPrev = el("td", "act");
       const bPrev = el("button", "btn", "미리보기");
       bPrev.type = "button";
       bPrev.disabled = !ready;
-      bPrev.addEventListener("click", () => openPreview(post, s));
+      bPrev.addEventListener("click", () => openPreview(post));
       tdPrev.append(bPrev);
 
       const tdDown = el("td", "act");
@@ -285,16 +372,14 @@
       bDown.type = "button";
       bDown.disabled = !ready;
       bDown.setAttribute("aria-label", `${post.title} 카드뉴스 ZIP 다운로드`);
-      bDown.addEventListener("click", () => downloadZip(post, s, bDown));
+      bDown.addEventListener("click", () => downloadZip(post, bDown));
       tdDown.append(bDown);
 
       const tdRegen = el("td", "act");
-      // 일반 링크로 새 탭을 연다 (window.open은 팝업 차단에 걸릴 수 있다). 클릭하면 slug도 복사한다.
-      const bRegen = el("a", "btn", key === "none" ? "생성" : "재생성");
-      bRegen.href = WORKFLOW_URL;
-      bRegen.target = "_blank";
-      bRegen.rel = "noopener";
-      bRegen.addEventListener("click", () => regenerate(post.slug));
+      const bRegen = el("button", "btn", state.busy === post.slug ? "생성 중…" : key === "none" ? "생성" : "재생성");
+      bRegen.type = "button";
+      bRegen.disabled = !!state.busy; // 한 번에 한 편만 (커밋이 서로 겹치지 않게)
+      bRegen.addEventListener("click", () => runGenerate(post));
       tdRegen.append(bRegen);
 
       tr.append(tdTitle, tdStatus, tdPrev, tdDown, tdRegen);
@@ -307,20 +392,44 @@
     c.replaceChildren(...Object.entries(counts).filter(([, n]) => n).map(([k, n]) => el("span", `chip ${STATUS[k].cls}`, `${STATUS[k].label} ${n}`)));
   }
 
-  async function openPreview(post, s) {
+  // ── 결과 읽기: 이 탭에서 만든 결과가 있으면 그것, 없으면 배포된 파일 ──
+  async function loadResult(slug) {
+    if (local[slug]) {
+      const { data, blobs, urls } = local[slug];
+      return { data, cards: urls.length, urls, blobs: async () => blobs };
+    }
+    const s = state.index[slug];
+    const data = await fetch(base(slug) + "summary.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error("summary.json"); return r.json(); });
+    const files = cardFiles(s.cards);
+    return {
+      data,
+      cards: s.cards,
+      urls: files.map(f => base(slug) + f + `?v=${encodeURIComponent(data.generated_at || "")}`),
+      blobs: () => Promise.all(files.map(f => fetch(base(slug) + f, { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(f); return r.blob(); }))),
+    };
+  }
+
+  function openDialog(post) {
     const dlg = $("#preview");
-    const body = $("#dlg-body");
     $("#dlg-title").textContent = post.title || post.slug;
     $("#dlg-meta").textContent = "";
+    if (!dlg.open) dlg.showModal();
+    return $("#dlg-body");
+  }
+
+  async function openPreview(post, notice) {
+    const body = openDialog(post);
     body.replaceChildren(el("p", null, "불러오는 중…"));
-    dlg.showModal();
+    const s = state.index[post.slug] || {};
 
     try {
-      const data = await fetch(base(post.slug) + "summary.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(); return r.json(); });
-      $("#dlg-meta").textContent = [`생성 ${fmt(data.generated_at)}`, data.model, `${s.cards}장`].filter(Boolean).join(" · ");
+      const r = await loadResult(post.slug);
+      const { data } = r;
+      $("#dlg-meta").textContent = [`생성 ${fmt(data.generated_at)}`, data.model, `${r.cards}장`].filter(Boolean).join(" · ");
       body.replaceChildren();
 
-      if (s.status === "failed") body.append(el("p", "notice failed", `최근 재생성은 실패했습니다: ${s.error || "원인 미상"}. 아래는 이전에 만든 결과입니다.`));
+      if (notice) body.append(notice);
+      else if (s.status === "failed") body.append(el("p", "notice failed", `최근 재생성은 실패했습니다: ${s.error || "원인 미상"}. 아래는 이전에 만든 결과입니다.`));
 
       const sum = el("section");
       sum.append(el("h3", null, "3줄 요약"));
@@ -331,20 +440,20 @@
       sum.append(box);
 
       const cards = el("section");
-      const h = el("h3", null, `카드 ${s.cards}장`);
-      cards.append(h);
+      cards.append(el("h3", null, `카드 ${r.cards}장`));
       const strip = el("div", "strip");
-      cardFiles(s.cards).forEach((f, i) => {
+      const files = cardFiles(r.cards);
+      r.urls.forEach((url, i) => {
         const fig = el("figure");
         const img = el("img");
-        img.src = base(post.slug) + f + `?v=${encodeURIComponent(data.generated_at || "")}`;
+        img.src = url;
         img.alt = `${i + 1}번 카드: ${data.cards?.[i]?.headline || ""}`;
         img.loading = "lazy";
         const cap = el("figcaption");
         const save = el("a", null, "PNG 저장");
-        save.href = base(post.slug) + f;
-        save.download = `${post.slug}-${f}`;
-        cap.append(el("span", null, `${pad2(i + 1)} / ${pad2(s.cards)}`), save);
+        save.href = url;
+        save.download = `${post.slug}-${files[i]}`;
+        cap.append(el("span", null, `${pad2(i + 1)} / ${pad2(r.cards)}`), save);
         fig.append(img, cap);
         strip.append(fig);
       });
@@ -373,22 +482,17 @@
     }
   }
 
-  const captionText = d => [d.caption || "", (d.hashtags || []).join(" ")].filter(Boolean).join("\n\n");
-
-  async function downloadZip(post, s, btn) {
+  async function downloadZip(post, btn) {
     if (!window.JSZip) { toast("압축 도구를 불러오지 못했습니다. 잠시 뒤 다시 시도하세요."); return; }
     const label = btn.textContent;
     btn.disabled = true;
     btn.textContent = "압축 중…";
     try {
+      const r = await loadResult(post.slug);
+      const pngs = await r.blobs();
       const zip = new JSZip();
-      const files = cardFiles(s.cards);
-      const [data, ...pngs] = await Promise.all([
-        fetch(base(post.slug) + "summary.json", { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error("summary.json"); return r.json(); }),
-        ...files.map(f => fetch(base(post.slug) + f, { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(f); return r.blob(); })),
-      ]);
-      files.forEach((f, i) => zip.file(f, pngs[i]));
-      zip.file("caption.txt", captionText(data) + "\n");
+      cardFiles(r.cards).forEach((f, i) => zip.file(f, pngs[i]));
+      zip.file("caption.txt", captionText(r.data) + "\n");
       const blob = await zip.generateAsync({ type: "blob" });
       const a = el("a");
       a.href = URL.createObjectURL(blob);
@@ -406,13 +510,321 @@
     }
   }
 
-  function regenerate(slug) {
-    copy(slug, `slug를 복사했습니다. Run workflow에 붙여넣으세요: ${slug}`, `Run workflow에 이 slug를 입력하세요: ${slug}`);
+  // ── F4 카드 렌더링: 템플릿을 숨긴 iframe에 띄우고 .card를 한 장씩 PNG로 ──
+  function waitFor(check, timeout, what) {
+    return new Promise((resolve, reject) => {
+      const t0 = Date.now();
+      (function tick() {
+        let v;
+        try { v = check(); } catch { /* 아직 로드 전 */ }
+        if (v) return resolve(v);
+        if (Date.now() - t0 > timeout) return reject(new Error(`${what} 시간 초과 (${timeout / 1000}초)`));
+        setTimeout(tick, 100);
+      })();
+    });
   }
+
+  async function renderCards(data) {
+    const src = URL.createObjectURL(new Blob([JSON.stringify(data)], { type: "application/json" }));
+    const frame = el("iframe", "render-box");
+    frame.setAttribute("aria-hidden", "true");
+    frame.tabIndex = -1;
+    frame.src = `../cardnews/template.html?capture&src=${encodeURIComponent(src)}`;
+    document.body.append(frame);
+    try {
+      const win = await waitFor(() => frame.contentWindow?.__CARDS_READY || frame.contentWindow?.__CARDS_ERROR ? frame.contentWindow : null, 30000, "카드 템플릿");
+      if (win.__CARDS_ERROR) throw new Error(`템플릿 오류: ${win.__CARDS_ERROR}`);
+
+      const doc = frame.contentDocument;
+      const cards = [...doc.querySelectorAll(".card")];
+      if (cards.length < 5 || cards.length > 7) throw new Error(`카드가 ${cards.length}장입니다 (5~7장)`);
+
+      await new Promise((resolve, reject) => {
+        const sc = doc.createElement("script");
+        sc.src = HTML_TO_IMAGE.src;
+        sc.integrity = HTML_TO_IMAGE.integrity;
+        sc.crossOrigin = "anonymous";
+        sc.onload = resolve;
+        sc.onerror = () => reject(new Error("카드 캡처 도구(html-to-image)를 불러오지 못했습니다"));
+        doc.head.append(sc);
+      });
+      const h2i = win.htmlToImage;
+      const deck = doc.getElementById("deck");
+      const W = 1080, H = 1350;
+      if (deck.scrollHeight !== H * cards.length) throw new Error(`카드 배치가 예상과 다릅니다 (${deck.scrollHeight}px)`);
+
+      // 폰트는 카드에 실제로 쓰인 굵기만 넣는다 (Pretendard 9종을 다 넣으면 20MB가 넘어 몹시 느리다)
+      const weights = new Set([...deck.querySelectorAll("*")].map(n => win.getComputedStyle(n).fontWeight));
+      const fontEmbedCSS = (await h2i.getFontEmbedCSS(deck)).replace(/@font-face\s*\{[^}]*\}/g, rule => {
+        const w = rule.match(/font-weight:\s*(\d+)/);
+        return !w || weights.has(w[1]) ? rule : "";
+      });
+      // 카드 전체를 한 번에 그린 뒤 1080×1350씩 잘라 PNG로 만든다
+      const sheet = await h2i.toCanvas(deck, { width: W, height: H * cards.length, pixelRatio: 1, fontEmbedCSS });
+      const blobs = [];
+      for (let i = 0; i < cards.length; i++) {
+        const c = el("canvas");
+        c.width = W;
+        c.height = H;
+        c.getContext("2d").drawImage(sheet, 0, i * H, W, H, 0, 0, W, H);
+        const blob = await new Promise(r => c.toBlob(r, "image/png"));
+        if (!blob) throw new Error(`카드 ${i + 1} 캡처 실패`);
+        blobs.push(blob);
+      }
+      return { blobs, warnings: (win.__CARD_WARNINGS || []).map(formatRenderWarning) };
+    } finally {
+      frame.remove();
+      URL.revokeObjectURL(src);
+    }
+  }
+
+  // ── F5 저장: GitHub API로 커밋 1개 (summary.json + PNG + index.json) ──
+  const toB64 = bytes => {
+    let bin = "";
+    for (let i = 0; i < bytes.length; i += 0x8000) bin += String.fromCharCode(...bytes.subarray(i, i + 0x8000));
+    return btoa(bin);
+  };
+  const textB64 = s => toB64(new TextEncoder().encode(s));
+  const fromB64Text = s => new TextDecoder().decode(Uint8Array.from(atob(s.replace(/\s/g, "")), c => c.charCodeAt(0)));
+
+  async function gh(token, path, { method = "GET", body } = {}) {
+    const res = await fetch(`https://api.github.com/repos/${REPO.owner}/${REPO.name}${path}`, {
+      method,
+      headers: {
+        Authorization: `Bearer ${token}`,
+        Accept: "application/vnd.github+json",
+        "X-GitHub-Api-Version": "2022-11-28",
+        ...(body ? { "Content-Type": "application/json" } : {}),
+      },
+      body: body ? JSON.stringify(body) : undefined,
+      cache: "no-store",
+    });
+    if (res.ok) return res.status === 204 ? null : res.json();
+    const msg = (await res.json().catch(() => ({})))?.message || res.statusText;
+    const hint = res.status === 401 ? " — 토큰이 올바르지 않거나 만료되었습니다"
+      : res.status === 403 || res.status === 404 ? " — 토큰에 이 저장소의 Contents 쓰기 권한이 있는지 확인하세요" : "";
+    throw Object.assign(new Error(`GitHub API ${res.status}: ${msg}${hint}`), { status: res.status });
+  }
+
+  // 토큰이 이 저장소에 쓸 수 있는지 AI를 부르기 전에 확인한다 (생성 후 커밋 실패로 결과를 버리지 않게)
+  async function checkToken(token) {
+    const repo = await gh(token, "");
+    if (repo.permissions && !repo.permissions.push) throw new Error("GitHub 토큰에 이 저장소 쓰기 권한이 없습니다");
+  }
+
+  const sortIndex = index => Object.fromEntries(Object.entries(index).sort(([a], [b]) => a.localeCompare(b)));
+
+  // files(head) → [{ path, text | blob | delete }]. 날씨 봇 커밋과 겹치면 최신 main 위에서 다시 만든다.
+  async function commit(token, message, buildFiles) {
+    for (let attempt = 1; attempt <= 3; attempt++) {
+      const ref = await gh(token, `/git/ref/heads/${REPO.branch}`);
+      const head = ref.object.sha;
+      const headCommit = await gh(token, `/git/commits/${head}`);
+      const files = await buildFiles(head);
+
+      const tree = [];
+      for (const f of files) {
+        if (f.delete) { tree.push({ path: f.path, mode: "100644", type: "blob", sha: null }); continue; }
+        const content = f.blob ? toB64(new Uint8Array(await f.blob.arrayBuffer())) : textB64(f.text);
+        const blob = await gh(token, "/git/blobs", { method: "POST", body: { content, encoding: "base64" } });
+        tree.push({ path: f.path, mode: "100644", type: "blob", sha: blob.sha });
+      }
+      const newTree = await gh(token, "/git/trees", { method: "POST", body: { base_tree: headCommit.tree.sha, tree } });
+      const newCommit = await gh(token, "/git/commits", { method: "POST", body: { message, tree: newTree.sha, parents: [head] } });
+      try {
+        await gh(token, `/git/refs/heads/${REPO.branch}`, { method: "PATCH", body: { sha: newCommit.sha, force: false } });
+        return newCommit.sha;
+      } catch (e) {
+        if (e.status !== 422 || attempt === 3) throw e; // 422 = 그 사이 main이 앞서 나감 → 다시
+      }
+    }
+  }
+
+  async function readRemoteIndex(token, head) {
+    try {
+      const f = await gh(token, `/contents/data/cardnews/index.json?ref=${head}`);
+      return JSON.parse(fromB64Text(f.content));
+    } catch (e) {
+      if (e.status === 404) return {};
+      throw e;
+    }
+  }
+
+  async function listRemoteCards(token, slug, head) {
+    try {
+      const items = await gh(token, `/contents/data/cardnews/${slug}?ref=${head}`);
+      return items.filter(f => /^card-\d+\.png$/.test(f.name)).map(f => f.path);
+    } catch (e) {
+      if (e.status === 404) return [];
+      throw e;
+    }
+  }
+
+  function commitResult(token, slug, data, blobs, entry) {
+    const dir = `data/cardnews/${slug}`;
+    return commit(token, `chore(cardnews): ${slug} 카드뉴스 생성`, async head => {
+      const index = await readRemoteIndex(token, head);
+      index[slug] = { ...entry, updated_at: new Date().toISOString() };
+      const files = cardFiles(blobs.length).map((f, i) => ({ path: `${dir}/${f}`, blob: blobs[i] }));
+      const keep = new Set(files.map(f => f.path));
+      // 이전 결과가 더 많은 장이었으면 남는 PNG를 지운다
+      const stale = (await listRemoteCards(token, slug, head)).filter(p => !keep.has(p)).map(path => ({ path, delete: true }));
+      return [
+        { path: `${dir}/summary.json`, text: JSON.stringify(data, null, 2) + "\n" },
+        ...files,
+        ...stale,
+        { path: "data/cardnews/index.json", text: JSON.stringify(sortIndex(index), null, 2) + "\n" },
+      ];
+    });
+  }
+
+  // 실패해도 상태는 남긴다 (이전 결과 파일은 건드리지 않는다)
+  function commitFailure(token, slug, message) {
+    return commit(token, `chore(cardnews): ${slug} 카드뉴스 생성 실패 기록`, async head => {
+      const index = await readRemoteIndex(token, head);
+      const prev = index[slug];
+      index[slug] = {
+        status: "failed",
+        generated_at: prev?.generated_at ?? null,
+        cards: prev?.cards ?? 0,
+        warnings: [],
+        error: message.slice(0, 300),
+        updated_at: new Date().toISOString(),
+      };
+      state.index[slug] = index[slug];
+      return [{ path: "data/cardnews/index.json", text: JSON.stringify(sortIndex(index), null, 2) + "\n" }];
+    });
+  }
+
+  // ── 생성 진행 표시 ──
+  const STEPS = ["본문 추출", "AI 요약·카드 문구 생성", "카드 PNG 렌더링", "저장소에 커밋"];
+  function progressView(post) {
+    const body = openDialog(post);
+    $("#dlg-meta").textContent = "생성 중 · 끝날 때까지 탭을 닫지 마세요";
+    const ol = el("ol", "steps");
+    const items = STEPS.map(t => { const li = el("li", "pending", t); ol.append(li); return li; });
+    body.replaceChildren(ol);
+    let cur = -1;
+    const note = (li, text) => { li.querySelector(".why")?.remove(); if (text) li.append(el("span", "why", text)); };
+    return {
+      step(i, text) {
+        if (cur >= 0 && items[cur].className === "active") items[cur].className = "done";
+        cur = i;
+        items[i].className = "active";
+        note(items[i], text);
+      },
+      log: text => cur >= 0 && note(items[cur], text),
+      skip(i, text) { items[i].className = "skipped"; note(items[i], text); },
+      done() { if (cur >= 0) items[cur].className = "done"; },
+      fail(text) { if (cur >= 0) { items[cur].className = "failed"; note(items[cur], text); } },
+    };
+  }
+
+  async function runGenerate(post) {
+    if (state.busy) return;
+    const apiKey = secret.get(KEYS.ai);
+    const token = secret.get(KEYS.github);
+    if (!apiKey) {
+      $("#keys").open = true;
+      $("#ai-key").focus();
+      toast("먼저 Claude API 키를 입력하세요");
+      return;
+    }
+    const { slug } = post;
+    state.busy = slug;
+    render();
+    const ui = progressView(post);
+    let stage = "prepare";
+    try {
+      ui.step(0, token ? "GitHub 토큰 권한 확인 중…" : null);
+      if (token) await checkToken(token);
+      const html = await fetch(`../posts/${slug}.html`, { cache: "no-cache" }).then(r => { if (!r.ok) throw new Error(`posts/${slug}.html 읽기 실패 (${r.status})`); return r.text(); });
+      const parsed = parsePost(html, `${slug}.html`, state.indexHtml);                     // F2
+      ui.log(`"${parsed.title}" · ${parsed.text.length}자`);
+
+      stage = "ai";
+      ui.step(1, "Claude 응답을 기다리는 중… (최대 2분)");
+      const { result: data, warnings, attempts } = await generate(parsed, { apiKey, log: m => ui.log(m.trim()) }); // F3
+      ui.log(`${data.model} · 호출 ${attempts}회 · 카드 ${data.cards.length}장`);
+
+      stage = "render";
+      ui.step(2, "폰트를 내려받고 카드를 그리는 중…");
+      const { blobs, warnings: renderWarnings } = await renderCards(data);                   // F4
+      ui.log(`PNG ${blobs.length}장`);
+      const all = [...warnings, ...renderWarnings];
+      const entry = { status: all.length ? "warning" : "done", generated_at: data.generated_at, cards: blobs.length, warnings: all, error: null };
+
+      if (local[slug]) local[slug].urls.forEach(u => URL.revokeObjectURL(u));
+      local[slug] = { data, blobs, urls: blobs.map(b => URL.createObjectURL(b)) };
+
+      let notice;
+      if (token) {
+        stage = "commit";
+        ui.step(3, "GitHub에 올리는 중…");
+        const sha = await commitResult(token, slug, data, blobs, entry);                    // F5
+        ui.done();
+        notice = el("p", "notice ok", `저장소에 커밋했습니다 (${sha.slice(0, 7)}). 블로그 반영까지 1~2분 걸립니다.`);
+      } else {
+        ui.skip(3, "GitHub 토큰이 없어 건너뜀");
+        ui.done();
+        notice = el("p", "notice warn", "GitHub 토큰이 없어 저장소에는 올리지 않았습니다. 이 탭을 닫으면 결과가 사라지니 ZIP으로 받아 두세요.");
+      }
+      state.index[slug] = { ...entry, updated_at: new Date().toISOString() };
+      if (all.length) notice.append(` · 경고 ${all.length}건`);
+      state.busy = null;
+      render();
+      toast("카드뉴스를 만들었습니다. 게시 전에 내용을 검토하세요");
+      if ($("#preview").open) openPreview(post, notice);
+    } catch (e) {
+      const msg = e.message || String(e);
+      ui.fail(msg);
+      // AI·렌더링 단계에서 실패하면 상태만 커밋한다 (토큰 확인·커밋 자체가 실패한 경우는 제외)
+      if (token && (stage === "ai" || stage === "render")) {
+        try { await commitFailure(token, slug, msg); ui.log(`${msg} · 실패 상태를 저장소에 기록했습니다`); }
+        catch (e2) { ui.log(`${msg} · 실패 상태 기록도 실패: ${e2.message}`); }
+      } else if (stage === "commit") {
+        ui.log(`${msg} · 결과는 이 탭에서 미리보기·ZIP으로 받을 수 있습니다`);
+      }
+      $("#dlg-meta").textContent = "생성 실패";
+      state.busy = null;
+      render();
+      toast("생성에 실패했습니다");
+    }
+  }
+
+  // ── 키 입력 ──
+  function showKeyState() {
+    const g = !!secret.get(KEYS.ai), t = !!secret.get(KEYS.github);
+    $("#key-state").replaceChildren(
+      el("span", `chip ${g ? "done" : "none"}`, g ? "Claude 키 있음" : "Claude 키 없음"),
+      " ",
+      el("span", `chip ${t ? "done" : "none"}`, t ? "GitHub 토큰 있음" : "GitHub 토큰 없음"),
+    );
+  }
+  $("#ai-key").value = secret.get(KEYS.ai);
+  $("#gh-token").value = secret.get(KEYS.github);
+  $("#keys").open = !secret.get(KEYS.ai);
+  showKeyState();
+  $("#key-form").addEventListener("submit", e => {
+    e.preventDefault();
+    secret.set(KEYS.ai, $("#ai-key").value.trim());
+    secret.set(KEYS.github, $("#gh-token").value.trim());
+    showKeyState();
+    toast("이 탭에 키를 저장했습니다");
+  });
+  $("#key-clear").addEventListener("click", () => {
+    $("#ai-key").value = "";
+    $("#gh-token").value = "";
+    secret.set(KEYS.ai, "");
+    secret.set(KEYS.github, "");
+    showKeyState();
+    toast("키를 지웠습니다");
+  });
 
   $("#preview").addEventListener("click", e => {
     if (e.target.matches("[data-close]") || e.target === e.currentTarget) e.currentTarget.close();
   });
+  window.addEventListener("beforeunload", e => { if (state.busy) e.preventDefault(); });
 
   load().catch(err => {
     $("#list").replaceChildren(el("div", "error", `불러오지 못했습니다: ${err.message}`));
