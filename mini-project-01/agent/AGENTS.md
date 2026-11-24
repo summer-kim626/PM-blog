@@ -15,7 +15,8 @@
 
 | 경로 | 용도 | 비고 |
 | --- | --- | --- |
-| `posts/YYYY-MM-DD-slug.html` | 블로그 글 (입력) | 파일명의 `slug`가 카드뉴스 폴더 이름이 된다 |
+| `posts/YYYY-MM-DD-slug.html` | 블로그 글 (입력) | 파일명의 `slug`가 카드뉴스 폴더 이름이 된다. 새 글은 `</body>` 앞에 `<script src="../assets/ai-summary.js" defer></script>`를 넣는다 |
+| `assets/ai-summary.js` | 글 상단 AI 3줄 요약 (F6) | `summary.json`이 없으면 아무것도 그리지 않는다. 보이면 GTM `ai_summary_view` 이벤트 |
 | `index.html` | 메인 페이지, `posts` 배열 | 글 목록 데이터가 스크립트 안에 있다 |
 | `cardnews/template.html` | 카드 HTML 템플릿 (F4) | `?src=<JSON>&scale=<배율>`, 샘플은 `cardnews/sample.json` |
 | `cardnews/figures.js` | 카드 도형 라이브러리 | 전체 도형 확인: `template.html?scale=0.2&src=figures-test.json` |
