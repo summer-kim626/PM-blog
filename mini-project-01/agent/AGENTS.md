@@ -6,7 +6,7 @@
 
 ## 1. 프로젝트 한 줄 요약
 
-`posts/*.html`에 새 글을 푸시하면 GitHub Actions가 AI로 **3줄 요약 + 인스타그램 카드뉴스(1080×1350, 5~7장) + 캡션·해시태그**를 만들어 `data/cardnews/<slug>/`에 커밋한다. 관리자는 `/admin`에서 상태를 보고 결과를 내려받는다.
+관리자가 `/admin`에서 API 키를 넣고 **생성**을 누르면, 브라우저가 직접 AI를 불러 **3줄 요약 + 인스타그램 카드뉴스(1080×1350, 5~7장) + 캡션·해시태그**를 만들고 GitHub API로 `data/cardnews/<slug>/`에 커밋한다(D-014). 관리자는 같은 화면에서 상태를 보고 결과를 내려받는다.
 
 - 마감: **2026-11-25(수) 16:50**. 이 시각 이후 커밋은 제출되지 않는다.
 - 범위는 PRD 4.1(MoSCoW)을 따른다. **Won't 항목(인스타그램 자동 업로드)은 구현하지 않는다.**
@@ -20,13 +20,13 @@
 | `index.html` | 메인 페이지, `posts` 배열 | 글 목록 데이터가 스크립트 안에 있다 |
 | `cardnews/template.html` | 카드 HTML 템플릿 (F4) | `?src=<JSON>&scale=<배율>`, 샘플은 `cardnews/sample.json` |
 | `cardnews/figures.js` | 카드 도형 라이브러리 | 전체 도형 확인: `template.html?scale=0.2&src=figures-test.json` |
-| `scripts/cardnews/` | F2~F4 스크립트 | `extract`(F2) · `generate`+`validate`(F3) · `render`(F4) · `run`(전체). 실행: `npm run cardnews -- posts/<파일>.html [--skip-ai]` |
+| `assets/vendor/anthropic-sdk.mjs` | 브라우저용 Claude SDK 번들 | `npm run build:sdk`로 생성. 직접 고치지 않는다 |
+| `scripts/cardnews/` | F2~F4 스크립트 | `parse`(F2) · `ai`+`validate`(F3)는 **관리자 페이지와 Node가 함께 쓰는 브라우저 호환 모듈**(Node 전용 API 금지). `extract`·`generate`·`render`·`run`은 로컬 Node용 래퍼. 실행: `npm run cardnews -- posts/<파일>.html [--skip-ai]` |
 | `.env` | 로컬 실행용 키 | `.env.example`을 복사해 쓴다. 커밋하지 않는다(`.gitignore`) |
 | `data/cardnews/<slug>/` | 생성 결과 (출력) | `summary.json`, `card-01.png` … |
 | `data/cardnews/index.json` | 글별 생성 상태 | `{ slug: { status, generated_at, cards, warnings, error } }`, status는 `done`·`warning`·`failed` |
-| `admin/index.html` | 관리자 페이지 `/admin` (F7) | 열: 글 제목 / 생성 유무 / 미리보기 / 다운로드 / 재생성 (PRD 4.3). 다운로드는 `<slug>-cardnews.zip`(PNG 전 장 + `caption.txt`, JSZip, D-010). 키·토큰을 다루지 않는다, `noindex` |
+| `admin/index.html` | 관리자 페이지 `/admin` (F1~F5·F7) | 열: 글 제목 / 생성 유무 / 미리보기 / 다운로드 / 재생성 (PRD 4.3). 생성: `parse` → `ai` → 숨긴 iframe의 `template.html` + html-to-image로 PNG → GitHub Git Data API로 커밋 1개. 다운로드는 `<slug>-cardnews.zip`(JSZip, D-010). `noindex`, CSP로 전송처 제한 |
 | `.github/workflows/` | 자동화 | 기존 `update-weather.yml` 구조를 참고한다 |
-| `.github/workflows/cardnews.yml` | F1·F5 워크플로우 | 새로 추가된 `posts/*.html` 푸시 시 실행. 재생성은 `workflow_dispatch`(slug, `skip_ai`). 실패해도 `index.json` 상태는 커밋 |
 | `mini-project-01/` | 제출 문서 | PRD, 로그, 테스트 보고서, 스크린샷 |
 
 - 소스코드의 새 위치가 생기면 의사결정 로그에 기록한다.
@@ -34,7 +34,11 @@
 
 ## 3. AI 생성 규칙 (F3)
 
-- 모델은 Google `gemini-3.8-flash`(무료 등급)를 쓴다. 503·429·시간 초과면 2회차는 대체 모델 `gemini-3.5-flash-lite`로 보낸다(`GEMINI_FALLBACK_MODEL`). 모델을 바꾸려면 먼저 사용자에게 묻는다.
+- 모델은 Anthropic `claude-opus-5-5`를 공식 SDK(`@anthropic-ai/sdk`, 버전 고정)로 부른다(D-015). 529·429·5xx·시간 초과면 2회차는 대체 모델 `claude-sonnet-5-5`로 보낸다(`CLAUDE_FALLBACK_MODEL`). 모델을 바꾸려면 먼저 사용자에게 묻는다.
+- 응답은 구조화 출력(`output_config.format`, JSON 스키마)으로 받고, 깊이는 `effort: "low"`로 둔다(Opus 5.5는 생각을 끌 수 없다). `temperature`는 보내지 않는다(400).
+- 안전 분류기 거절에 대비해 서버 측 대체(`fallbacks: "default"`, 베타 `server-side-fallback-2026-07-01`)를 켠다. 최종 응답이 `refusal`이면 실패로 기록한다.
+- SDK 자동 재시도는 끈다(`maxRetries: 0`). 재시도는 아래 "최대 2회" 규칙으로만 한다.
+- 브라우저용 SDK는 `npm run build:sdk`로 `assets/vendor/anthropic-sdk.mjs`에 묶고, 관리자 페이지는 import map으로 읽는다. SDK 버전을 올리면 다시 빌드해 함께 커밋한다.
 - `summary.json`의 `model`에는 실제로 만든 모델 이름을 남긴다.
 - 입력은 글의 `<article>` 안 텍스트만 쓴다. 글 1편당 호출은 재시도 포함 최대 2회.
 
@@ -92,8 +96,11 @@
 
 ## 4. 보안 규칙
 
-- API 키는 **GitHub Secrets(`GEMINI_API_KEY`)에만** 둔다. 코드·로그·커밋·브라우저 스크립트에 키를 넣지 않는다.
-- 워크플로우에서 키가 비어 있으면 `::error::`로 알리고 바로 종료한다(날씨 워크플로우와 같은 방식).
+- Claude API 키와 GitHub 토큰은 **관리자가 `/admin`에 직접 입력**하고, 그 탭의 `sessionStorage`에만 둔다(D-014). 코드·로그·커밋·`localStorage`에 넣지 않는다.
+- Claude 키는 `api.anthropic.com`, 토큰은 `api.github.com`으로만 보낸다. 관리자 페이지의 CSP `connect-src`를 넓히지 않는다.
+- 관리자 페이지에 외부 스크립트를 넣을 때는 버전을 고정하고 SRI(`integrity`)를 단다. 키를 읽을 수 있는 같은 출처이기 때문이다.
+- GitHub 토큰은 이 저장소만 고른 fine-grained 토큰(Contents: Read and write)을 안내한다.
+- 로컬 Node 실행은 `.env`의 `ANTHROPIC_API_KEY`를 쓴다.
 - API 원본 응답은 저장하지 않고 필요한 값만 남긴다.
 
 ## 5. Git 규칙
@@ -104,7 +111,7 @@
 - 한 커밋에는 한 가지 변경만 담는다. 과제가 중간 커밋 기록을 평가하므로 작업 단위마다 커밋한다.
 - PRD·테스트 보고서를 고치면 커밋 메시지에 버전을 적는다. 예: `docs: PRD v0.3 성공 기준 수정`
 - 날씨 봇이 1시간마다 커밋하므로 **푸시 전에 `git pull --rebase`**를 한다.
-- 워크플로우 봇 커밋은 `chore(cardnews): <slug> 카드뉴스 생성` 형식을 쓴다.
+- 관리자 페이지가 만드는 커밋은 `chore(cardnews): <slug> 카드뉴스 생성`(실패 시 `… 생성 실패 기록`) 형식을 쓴다.
 - 사용자가 요청하기 전에는 커밋·푸시하지 않는다.
 
 ## 6. 기록 규칙
@@ -120,6 +127,5 @@
 
 ## 7. 작업 원칙
 
-- 로컬에서 글 1편으로 F2~F4가 성공한 뒤에 Actions(F1, F5)를 붙인다.
 - 범위를 늘리고 싶으면 먼저 사용자에게 묻고, 결정하면 의사결정 로그에 남긴다.
 - 문서(PRD, 테스트 보고서)는 각각 **2페이지 이하**를 지킨다.
