@@ -58,7 +58,7 @@ mini-project-01/
 │   ├── PRD.md             # PRD 기획서 (2p 이하)
 │   └── test-report.md     # 테스트 보고서 (2p 이하)
 ├── agent/
-│   └── AGENT.md           # 에이전트용 지침
+│   └── AGENTS.md          # 에이전트용 지침 (루트 CLAUDE.md가 불러옴)
 ├── logs/
 │   ├── success-failure.md # 성공/실패 로그
 │   └── decision-log.md    # 의사결정 로그
