@@ -5,8 +5,8 @@
   "temp_min": -4,
   "temp_max": -4,
   "humidity": 80,
-  "description": "맑음",
-  "icon": "01n",
-  "observed_at": 1795558226,
-  "fetched_at": 1795558226
+  "description": "약간의 구름이 낀 하늘",
+  "icon": "02d",
+  "observed_at": 1795561630,
+  "fetched_at": 1795561701
 }
