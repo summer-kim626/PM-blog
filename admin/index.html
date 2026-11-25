@@ -174,9 +174,80 @@
     background: var(--text); color: var(--bg); padding: 10px 18px; border-radius: 10px; font-size: 14px;
     box-shadow: var(--shadow); transition: opacity .2s, transform .2s; pointer-events: none; max-width: calc(100vw - 32px); text-align: center; }
   .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  /* 접속 인증 번호 (D-016): 풀기 전에는 관리 화면을 숨긴다 */
+  .gate { display: none; }
+  html.locked body > header, html.locked body > main { display: none; }
+  html.locked .gate { display: grid; place-items: center; min-height: 100vh; padding: 24px 16px; }
+  .gate form { width: 100%; max-width: 340px; background: var(--surface); border: 1px solid var(--line);
+    border-radius: 12px; padding: 28px 24px; display: grid; gap: 14px; text-align: center; }
+  .gate h1 { font-size: 22px; }
+  .gate p { font-size: 14px; color: var(--muted); }
+  .gate input { font: inherit; font-size: 22px; letter-spacing: .5em; text-align: center; color: var(--text);
+    background: var(--bg); border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px 10px calc(12px + .5em); width: 100%; }
+  .gate input:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  .gate .err { color: var(--danger); font-size: 13px; min-height: 1.4em; }
+  .gate a { font-size: 13px; color: var(--muted); }
 </style>
+<script>
+  // 인증을 마친 탭이면 바로 연다. 아니면 그리기 전에 잠가서 관리 화면이 잠깐도 보이지 않게 한다.
+  (function () {
+    let ok = false;
+    try { ok = sessionStorage.getItem("admin.unlocked") === "1"; } catch { /* 저장 불가: 매번 입력 */ }
+    if (!ok) document.documentElement.classList.add("locked");
+  })();
+</script>
 </head>
 <body>
+<div class="gate" id="gate">
+  <form id="gate-form" autocomplete="off">
+    <h1>관리자 확인</h1>
+    <p>인증 번호 4자리를 입력하세요.</p>
+    <input type="password" id="gate-code" inputmode="numeric" pattern="[0-9]*" maxlength="4"
+      autocomplete="off" aria-label="인증 번호" aria-describedby="gate-err" required>
+    <p class="err" id="gate-err" aria-live="polite"></p>
+    <button class="btn primary" type="submit">확인</button>
+    <a href="../">블로그로 돌아가기</a>
+  </form>
+</div>
+<script>
+  // 인증 번호는 원문 대신 SHA-256 값만 둔다. 정적 페이지라 화면 가림용이며, 실제 보호는 API 키·토큰이 맡는다.
+  (function () {
+    const HASH = "ed053874ca199cc53e11c9f4aeaeccd07da652d1c19e3cbdbad5fd9fadba2532";
+    const MAX_TRIES = 5, LOCK_MS = 30000;
+    const form = document.getElementById("gate-form");
+    const input = document.getElementById("gate-code");
+    const err = document.getElementById("gate-err");
+    let tries = 0, until = 0;
+    if (document.documentElement.classList.contains("locked")) input.focus();
+
+    async function sha256(text) {
+      const buf = await crypto.subtle.digest("SHA-256", new TextEncoder().encode(text));
+      return Array.from(new Uint8Array(buf), b => b.toString(16).padStart(2, "0")).join("");
+    }
+
+    form.addEventListener("submit", async e => {
+      e.preventDefault();
+      const wait = Math.ceil((until - Date.now()) / 1000);
+      if (wait > 0) { err.textContent = `${wait}초 뒤에 다시 시도하세요.`; return; }
+      if (await sha256(input.value.trim()) === HASH) {
+        try { sessionStorage.setItem("admin.unlocked", "1"); } catch { /* 이 화면에서만 열림 */ }
+        document.documentElement.classList.remove("locked");
+        input.value = "";
+        return;
+      }
+      tries += 1;
+      input.value = "";
+      input.focus();
+      if (tries >= MAX_TRIES) {
+        tries = 0; until = Date.now() + LOCK_MS;
+        err.textContent = `${MAX_TRIES}번 틀렸습니다. 30초 뒤에 다시 시도하세요.`;
+      } else {
+        err.textContent = `인증 번호가 맞지 않습니다. (${tries}/${MAX_TRIES})`;
+      }
+    });
+  })();
+</script>
 <header>
   <div class="wrap">
     <nav>
