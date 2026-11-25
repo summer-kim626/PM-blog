@@ -10,9 +10,7 @@ IT 서비스 기획을 공부하며 PM/PO 포트폴리오를 쌓아가는 개인
 
 | 영역 | 설명 |
 | --- | --- |
-| 글 보드 | 카테고리 탭으로 필터링되는 칸반형 보드. **발행됨 / 작성 예정** 두 칸으로 나뉩니다. |
-| 서울 날씨 위젯 | GitHub Actions가 1시간마다 갱신하는 `data/weather.json`을 읽어 사이드바에 표시합니다. |
-| 쉬어가는 코너 | [The Cat API](https://thecatapi.com/) 랜덤 고양이 사진, [PokéAPI](https://pokeapi.co/) 랜덤 포켓몬 카드. API 호출 실패 시 목업 이미지로 대체됩니다. |
+| 글 보드 | 카테고리 탭으로 필터링되는 발행된 글 목록 |
 | 소개 | 블로그와 작성자 소개 |
 
 ## 폴더 구조
@@ -24,9 +22,6 @@ PM-blog/
 ├── assets/tailwind.css         # 빌드된 Tailwind CSS (커밋 대상)
 ├── src/tailwind.input.css      # Tailwind 입력 파일
 ├── tailwind.config.js          # 색·글꼴은 index.html :root CSS 변수(토큰)를 참조
-├── data/weather.json           # 서울 날씨 (Actions가 자동 갱신)
-├── .github/workflows/
-│   └── update-weather.yml      # 날씨 갱신 워크플로우
 └── mini-project-01/            # 미니 프로젝트 01: 블로그 AI 기능 기획·개발
     ├── README.md
     ├── docs/PRD.md
@@ -66,17 +61,10 @@ npm run build:css
 { date: "2026-11-24", cat: "카테고리", title: "글 제목", desc: "한 줄 요약", url: "posts/2026-11-24-slug.html" }
 ```
 
-- `url`을 `"#"`으로 두면 **작성 예정** 칸에 표시됩니다.
+- `url`을 `"#"`으로 두면 작성 예정 글로 보고 화면에 표시하지 않습니다.
 - `cat` 값은 카테고리 탭으로 자동 생성됩니다.
 
 3. 새 클래스를 썼다면 `npm run build:css`를 실행합니다.
-
-## 날씨 자동 갱신
-
-`.github/workflows/update-weather.yml`이 매시 17분(UTC)에 OpenWeather API를 호출해 필요한 값만 `data/weather.json`에 저장하고 커밋합니다. Actions 탭에서 수동 실행(`workflow_dispatch`)도 가능합니다.
-
-- API 키는 레포 **Settings → Secrets and variables → Actions**의 `OPENWEATHER_API_KEY`에 보관하므로 코드에 노출되지 않습니다.
-- 프런트엔드는 `raw.githubusercontent.com`의 최신 파일을 먼저 읽고, 실패하면 같은 경로의 `data/weather.json`을 읽습니다.
 
 ## 미니 프로젝트
 

@@ -26,7 +26,6 @@
 | `data/cardnews/<slug>/` | 생성 결과 (출력) | `summary.json`, `card-01.png` … |
 | `data/cardnews/index.json` | 글별 생성 상태 | `{ slug: { status, generated_at, cards, warnings, error } }`, status는 `done`·`warning`·`failed` |
 | `admin/index.html` | 관리자 페이지 `/admin` (F1~F5·F7) | 열: 글 제목 / 생성 유무 / 미리보기 / 다운로드 / 재생성 (PRD 4.3). 생성: `parse` → `ai` → 숨긴 iframe의 `template.html` + html-to-image로 PNG → GitHub Git Data API로 커밋 1개. 다운로드는 `<slug>-cardnews.zip`(JSZip, D-010). `noindex`, CSP로 전송처 제한 |
-| `.github/workflows/` | 자동화 | 기존 `update-weather.yml` 구조를 참고한다 |
 | `mini-project-01/` | 제출 문서 | PRD, 로그, 테스트 보고서, 스크린샷 |
 
 - 소스코드의 새 위치가 생기면 의사결정 로그에 기록한다.
@@ -110,7 +109,7 @@
   - 예: `feat: 카드뉴스 PNG 렌더링 스크립트 추가`
 - 한 커밋에는 한 가지 변경만 담는다. 과제가 중간 커밋 기록을 평가하므로 작업 단위마다 커밋한다.
 - PRD·테스트 보고서를 고치면 커밋 메시지에 버전을 적는다. 예: `docs: PRD v0.3 성공 기준 수정`
-- 날씨 봇이 1시간마다 커밋하므로 **푸시 전에 `git pull --rebase`**를 한다.
+- 관리자 페이지가 main에 직접 커밋하므로 **푸시 전에 `git pull --rebase`**를 한다.
 - 관리자 페이지가 만드는 커밋은 `chore(cardnews): <slug> 카드뉴스 생성`(실패 시 `… 생성 실패 기록`) 형식을 쓴다.
 - 사용자가 요청하기 전에는 커밋·푸시하지 않는다.
 
