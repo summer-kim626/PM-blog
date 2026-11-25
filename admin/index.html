@@ -511,7 +511,13 @@
       sum.append(box);
 
       const cards = el("section");
-      cards.append(el("h3", null, `카드 ${r.cards}장`));
+      const cardsH = el("h3", null, `카드 ${r.cards}장`);
+      const allBtn = el("button", "btn primary", "전체 다운로드");
+      allBtn.type = "button";
+      allBtn.setAttribute("aria-label", `카드 ${r.cards}장 전체를 ZIP으로 다운로드`);
+      allBtn.addEventListener("click", () => downloadZip(post, allBtn));
+      cardsH.append(allBtn);
+      cards.append(cardsH);
       const strip = el("div", "strip");
       const files = cardFiles(r.cards);
       r.urls.forEach((url, i) => {
