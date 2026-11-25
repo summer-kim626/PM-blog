@@ -1,6 +1,6 @@
 # 테스트 보고서
 
-- **문서 버전**: v0.7 (실제 Claude 키·GitHub 토큰으로 생성 테스트, 기능별 단위 테스트 추가)
+- **문서 버전**: v0.8 (전체 유저플로우 스크린샷 추가: 관리자 링크·인증 번호 화면 포함)
 - **작성일**: 2026-11-24 · **기준**: [PRD](./PRD.md) 4.2 기능별 완료 기준
 - **환경**: macOS, Node 26, Claude 데스크톱 앱 내장 브라우저, 로컬 HTTP 서버(`localhost:8000`)
 - **대상 글**: `posts/2026-11-24-rice-vs-ice.html` (미생성 상태에서 처음 생성)
@@ -20,6 +20,27 @@
 
 **단위 테스트 23/23 통과** (0.5초, 네트워크 없음) · 실행: `node --test mini-project-01/tests/`
 
+## 유저플로우 화면
+
+홈에서 관리자 페이지에 들어가 카드뉴스를 만들고, 블로그 글에서 요약을 확인하기까지의 순서다. ①~③은 2026-11-25에 새로 찍었고, ④~⑧은 1장 실제 생성 테스트 때 찍었다.
+
+<table><tr>
+<td><img src="../screenshots/01-home-admin-link.jpg" width="200"><br>① 홈 사이드바 [관리자]</td>
+<td><img src="../screenshots/02-admin-passcode.jpg" width="200"><br>② 인증 번호 입력</td>
+<td><img src="../screenshots/03-admin-api-key.jpg" width="200"><br>③ API 키 입력 · 글 목록</td>
+<td><img src="../screenshots/04-admin-generating.jpg" width="200"><br>④ 생성 진행 (AI 단계)</td>
+</tr><tr>
+<td><img src="../screenshots/05-admin-commit-step.jpg" width="200"><br>⑤ 저장소에 커밋</td>
+<td><img src="../screenshots/06-admin-result-preview.jpg" width="200"><br>⑥ 결과 미리보기</td>
+<td><img src="../screenshots/07-admin-list-all-done.jpg" width="200"><br>⑦ 상태 "완료" · ZIP 받기</td>
+<td><img src="../screenshots/08-post-ai-summary-rice-ice.jpg" width="200"><br>⑧ 글 상단 AI 3줄 요약</td>
+</tr></table>
+
+| 화면 | 확인 내용 | 결과 |
+| --- | --- | --- |
+| ①→② | 사이드바 [관리자]를 누르면 관리 화면 대신 인증 번호 화면이 먼저 뜸 | ✅ |
+| ② | 틀린 번호 → "맞지 않습니다 (1/5)", 맞는 번호 → 관리 화면 열림, 같은 탭 새로고침 시 다시 묻지 않음 | ✅ (로컬. 배포본은 ② 화면 표시까지 확인) |
+
 ## 1. 실제 생성 테스트 (F1·F3·F4·F5)
 
 **방법:** 내장 브라우저에서 `/admin/`을 열고 관리자가 Claude 키·GitHub 토큰을 입력한 뒤, 미생성 글의 [생성]을 눌렀다.
@@ -31,15 +52,7 @@
 | ③ 카드 PNG 렌더링 | PNG 7장 | ✅ 넘침 경고 0건 |
 | ④ 저장소에 커밋 | "저장소에 커밋했습니다 (808cd16)" | ✅ `chore(cardnews): 2026-11-24-rice-vs-ice 카드뉴스 생성` |
 
-**생성 품질 (사람이 확인):** 본문과 대조했을 때 **본문에 없는 사실·수치는 0건**이었다(후보 4개·실수 5가지·"ICE로 거르고 RICE로" 모두 본문에 있음). 카드 구성은 cover 1 + point 5 + cta 1이다. 도형은 versus·converge·chart·checklist·magnifier·steps로 겹치지 않았고, 해시태그는 8개다. 말투는 합니다체를 지켰다.
-
-<table><tr>
-<td><img src="../screenshots/04-admin-generating.jpg" width="330"><br>① 생성 진행 (AI 단계)</td>
-<td><img src="../screenshots/05-admin-commit-step.jpg" width="330"><br>② 커밋 단계</td>
-</tr><tr>
-<td><img src="../screenshots/06-admin-result-preview.jpg" width="330"><br>③ 결과 미리보기 (요약·카드·캡션)</td>
-<td><img src="../screenshots/07-post-ai-summary-rice-ice.jpg" width="330"><br>④ 글 상단 AI 3줄 요약 (F6)</td>
-</tr></table>
+**생성 품질 (사람이 확인):** 본문과 대조했을 때 **본문에 없는 사실·수치는 0건**이었다(후보 4개·실수 5가지·"ICE로 거르고 RICE로" 모두 본문에 있음). 카드 구성은 cover 1 + point 5 + cta 1이다. 도형은 versus·converge·chart·checklist·magnifier·steps로 겹치지 않았고, 해시태그는 8개다. 말투는 합니다체를 지켰다. 화면은 위 유저플로우 ④~⑥·⑧.
 
 ## 2. 기능별 단위 테스트
 
