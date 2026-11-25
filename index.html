@@ -17,7 +17,7 @@ j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
 <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@400;500;700;900&display=swap" rel="stylesheet">
 <style>
   /* Tailwind 유틸리티는 assets/tailwind.css (npm run build:css 로 생성). 아래는 색·글꼴 토큰.
-     Layout idea: PM의 작업 보드 — 왼쪽 고정 사이드바(프로필·날씨), 오른쪽은 'PRD 한 장 + 상태별 칸반 + 폴라로이드/트레이딩카드' */
+     Layout idea: PM의 작업 보드 — 왼쪽 고정 사이드바(프로필·메뉴), 오른쪽은 'PRD 한 장 + 발행된 글 보드' */
   :root {
     --bg: #ecedf1; --surface: #ffffff; --ink: #1d1b26; --muted: #646274;
     --line: #d4d4dd; --accent: #0f766e; --accent-soft: #d6efec; --mark: #ffe066;
@@ -63,24 +63,11 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         <ul class="flex flex-wrap gap-x-5 gap-y-2 text-[15px] lg:flex-col lg:gap-1">
           <li><a class="rounded-md py-1 hover:text-accent lg:block lg:px-2 lg:hover:bg-accent-soft" href="#top">처음으로</a></li>
           <li><a class="rounded-md py-1 hover:text-accent lg:block lg:px-2 lg:hover:bg-accent-soft" href="#board">글 보드</a></li>
-          <li><a class="rounded-md py-1 hover:text-accent lg:block lg:px-2 lg:hover:bg-accent-soft" href="#break">쉬어가기</a></li>
           <li><a class="rounded-md py-1 hover:text-accent lg:block lg:px-2 lg:hover:bg-accent-soft" href="#about">소개</a></li>
           <li><a class="rounded-md py-1 hover:text-accent lg:block lg:px-2 lg:hover:bg-accent-soft" href="https://github.com/summer-kim626/PM-blog">GitHub ↗</a></li>
           <li><a class="rounded-md py-1 hover:text-accent lg:block lg:px-2 lg:hover:bg-accent-soft" href="admin/" rel="nofollow">관리자</a></li>
         </ul>
       </nav>
-
-      <!-- Weather ticket -->
-      <div id="weather" class="hidden rounded-xl border border-dashed border-line bg-surface p-4 lg:mt-auto">
-        <div class="flex items-center justify-between text-xs text-muted">
-          <span>오늘 서울</span>
-        </div>
-        <div class="mt-2 flex items-end justify-between gap-3">
-          <p id="w-temp" class="font-display text-4xl font-bold leading-none tabular-nums">–</p>
-          <span id="w-icon" class="text-accent" aria-hidden="true"></span>
-        </div>
-        <p id="w-desc" class="mt-2 text-sm text-muted">불러오는 중</p>
-      </div>
     </div>
   </aside>
 
@@ -95,60 +82,13 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
       <p class="mt-4 max-w-[36rem] text-[17px] text-muted">서비스 기획자·PM의 관점에서 리서치, 문제 정의, 지표 설계, 프로젝트 회고를 정리합니다.</p>
     </section>
 
-    <!-- Kanban board -->
+    <!-- Post board -->
     <section id="board" class="scroll-mt-6 border-t border-line py-10">
       <div class="mb-6 flex flex-wrap items-end justify-between gap-4">
         <h2 class="font-display text-2xl font-bold">글 보드</h2>
         <div id="cats" class="flex flex-wrap gap-1.5" role="tablist" aria-label="카테고리"></div>
       </div>
-      <div class="grid gap-4 md:grid-cols-2">
-        <div class="rounded-xl bg-surface/60 p-3 ring-1 ring-line">
-          <h3 class="mb-3 flex items-center gap-2 px-1 text-sm font-bold"><span class="h-2 w-2 rounded-full bg-accent"></span>발행됨 <span id="c-pub" class="text-muted tabular-nums"></span></h3>
-          <ul id="col-pub" class="flex flex-col gap-3"></ul>
-        </div>
-        <div class="rounded-xl bg-surface/60 p-3 ring-1 ring-line">
-          <h3 class="mb-3 flex items-center gap-2 px-1 text-sm font-bold"><span class="h-2 w-2 rounded-full border-2 border-muted"></span>작성 예정 <span id="c-draft" class="text-muted tabular-nums"></span></h3>
-          <ul id="col-draft" class="flex flex-col gap-3"></ul>
-        </div>
-      </div>
-    </section>
-
-    <!-- Break corner -->
-    <section id="break" class="scroll-mt-6 border-t border-line py-10">
-      <h2 class="mb-8 font-display text-2xl font-bold">쉬어가는 코너</h2>
-      <div class="grid items-start gap-10 px-2 sm:grid-cols-2 sm:gap-8">
-        <!-- Polaroid cat -->
-        <figure id="cat-card" class="-rotate-2 bg-white p-3 pb-4 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.35)] transition-transform hover:rotate-0">
-          <div class="relative aspect-square overflow-hidden bg-neutral-200">
-            <span id="cat-mock" class="hidden absolute left-2 top-2 z-[1] rounded-full bg-neutral-900/80 px-2 py-0.5 text-[11px] font-medium text-white">목업 이미지</span>
-            <img id="cat-img" alt="랜덤 고양이 사진" class="h-full w-full object-cover transition-opacity duration-300">
-          </div>
-          <figcaption class="mt-3 flex items-center justify-between gap-2 text-neutral-700">
-            <span class="font-display text-[17px]">오늘 만난 고양이</span>
-            <button id="cat-btn" type="button" class="rounded-full border border-neutral-300 px-3 py-1 text-[13px] font-medium text-neutral-800 hover:border-teal-700 hover:text-teal-700 disabled:cursor-wait disabled:opacity-50">한 장 더</button>
-          </figcaption>
-          <p class="mt-1 text-[11px] text-neutral-500">사진 제공 <a class="underline" href="https://thecatapi.com">The Cat API</a></p>
-        </figure>
-
-        <!-- Trading card pokemon -->
-        <figure id="poke-card" class="rotate-1 rounded-2xl p-2 shadow-[0_10px_30px_-12px_rgba(0,0,0,0.35)] transition-transform hover:rotate-0" style="background: var(--type-color, #a8a77a);">
-          <div class="rounded-xl bg-white p-3 text-neutral-900">
-            <div class="flex items-baseline justify-between">
-              <span id="poke-name" class="text-lg font-black">불러오는 중</span>
-              <span id="poke-no" class="text-xs font-bold text-neutral-500">No.—</span>
-            </div>
-            <div class="relative mt-2 aspect-square rounded-lg border-4" style="border-color: var(--type-color, #a8a77a); background: radial-gradient(circle at 50% 40%, #ffffff, #eef0f3);">
-              <span id="poke-mock" class="hidden absolute left-2 top-2 z-[1] rounded-full bg-neutral-900/80 px-2 py-0.5 text-[11px] font-medium text-white">목업 이미지</span>
-              <img id="poke-img" alt="" class="absolute inset-0 h-full w-full object-contain p-4">
-            </div>
-            <div class="mt-3 flex items-center justify-between gap-2 text-[13px]">
-              <span id="poke-genus" class="italic text-neutral-600"></span>
-              <span id="poke-types" class="flex gap-1"></span>
-            </div>
-            <p class="mt-2 border-t border-neutral-200 pt-2 text-[11px] text-neutral-500">오늘의 포켓몬 · 한국시간 자정마다 바뀝니다 · PokeAPI</p>
-          </div>
-        </figure>
-      </div>
+      <ul id="col-pub" class="grid gap-3 md:grid-cols-2"></ul>
     </section>
 
     <!-- About -->
@@ -163,32 +103,28 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
 
 <script>
   // ── 글 데이터 ─────────────────────────────────────────────
-  // 새 글은 이 배열에 추가합니다. url이 "#"이면 '작성 예정' 칸에 들어갑니다.
-  const posts = [
+  // 새 글은 이 배열에 추가합니다. url이 "#"인 글(작성 예정)은 화면에 보이지 않습니다.
+  const allPosts = [
     { date: "2026-11-24", cat: "문제 정의", title: "문제의 우선순위 정하기: RICE와 ICE 비교", desc: "같은 후보에 RICE와 ICE를 적용해 비교하고, 언제 무엇을 쓸지 정리.", url: "posts/2026-11-24-rice-vs-ice.html" },
     { date: "2026-11-24", cat: "문제 정의", title: "문제 정의하는 방법: 5 Whys부터 가설까지", desc: "5 Whys → 타깃-현상-문제 → 가설(타깃·행동·변화·근거·지표)을 예시로 정리.", url: "posts/2026-11-24-problem-definition.html" },
     { date: "2026-11-18", cat: "회고", title: "PM 블로그를 시작하며", desc: "왜 기록을 시작했는지, 이 블로그에서 다룰 주제와 운영 원칙.", url: "posts/2026-11-18-start-pm-blog.html" },
     { date: "2026-11-18", cat: "문제 정의", title: "인터뷰로 문제를 좁히는 방법", desc: "가설 → 질문 설계 → 인사이트 도출까지의 흐름 정리.", url: "#" },
     { date: "2026-11-18", cat: "데이터", title: "설문으로 가설 검증하기", desc: "표본·문항 설계에서 자주 하는 실수와 체크리스트.", url: "#" }
   ];
+  const posts = allPosts.filter(p => p.url !== "#");
   const esc = s => String(s).replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
   const cats = ["전체", ...new Set(posts.map(p => p.cat))];
   let current = "전체";
   const $cats = document.getElementById("cats");
 
   function card(p) {
-    const draft = p.url === "#";
-    const body = `
+    return `<li><a class="group block h-full rounded-lg border border-line bg-surface p-4 shadow-sm transition hover:-translate-y-0.5 hover:border-accent hover:shadow-md" href="${esc(p.url)}">
       <div class="mb-2 flex items-center justify-between gap-2 text-xs">
         <span class="rounded bg-accent-soft px-1.5 py-0.5 font-bold text-accent">${esc(p.cat)}</span>
         <time class="tabular-nums text-muted">${esc(p.date.replaceAll("-", "."))}</time>
       </div>
-      <h4 class="font-display text-[18px] font-bold leading-snug ${draft ? "" : "group-hover:text-accent"}">${esc(p.title)}</h4>
-      <p class="mt-1 text-sm text-muted">${esc(p.desc)}</p>`;
-    const cls = "block rounded-lg border border-line bg-surface p-4";
-    return `<li>${draft
-      ? `<div class="${cls} border-dashed opacity-80">${body}</div>`
-      : `<a class="group ${cls} shadow-sm transition hover:-translate-y-0.5 hover:border-accent hover:shadow-md" href="${esc(p.url)}">${body}</a>`}</li>`;
+      <h4 class="font-display text-[18px] font-bold leading-snug group-hover:text-accent">${esc(p.title)}</h4>
+      <p class="mt-1 text-sm text-muted">${esc(p.desc)}</p></a></li>`;
   }
   function render() {
     $cats.innerHTML = cats.map(c => {
@@ -197,123 +133,12 @@ height="0" width="0" style="display:none;visibility:hidden"></iframe></noscript>
         class="rounded-md px-3 py-1.5 text-sm transition-colors ${on ? "bg-ink text-bg" : "text-muted hover:bg-surface hover:text-ink"}">${esc(c)}</button>`;
     }).join("");
     const shown = posts.filter(p => current === "전체" || p.cat === current);
-    const pub = shown.filter(p => p.url !== "#"), draft = shown.filter(p => p.url === "#");
     const empty = `<li class="rounded-lg border border-dashed border-line p-4 text-sm text-muted">이 카테고리에는 아직 없습니다.</li>`;
-    document.getElementById("col-pub").innerHTML = pub.map(card).join("") || empty;
-    document.getElementById("col-draft").innerHTML = draft.map(card).join("") || empty;
-    document.getElementById("c-pub").textContent = pub.length;
-    document.getElementById("c-draft").textContent = draft.length;
+    document.getElementById("col-pub").innerHTML = shown.map(card).join("") || empty;
   }
   $cats.addEventListener("click", e => { const b = e.target.closest("button[data-c]"); if (b) { current = b.dataset.c; render(); } });
   render();
 
-  // ── 공통 도우미 ───────────────────────────────────────────
-  // 이미지를 미리 받아본 뒤 성공했을 때만 화면에 넣습니다.
-  const loadImg = (el, url) => new Promise(done => {
-    const pre = new Image();
-    pre.onload = () => { el.src = url; done(true); };
-    pre.onerror = () => done(false);
-    pre.src = url;
-  });
-
-  // API를 불러오지 못했을 때 보여줄 목업 이미지 (외부 요청 없이 페이지 안에 포함)
-  const svgData = svg => "data:image/svg+xml;charset=utf-8," + encodeURIComponent(svg);
-  const MOCK_CAT = svgData(`<svg xmlns="http://www.w3.org/2000/svg" width="300" height="300" viewBox="0 0 300 300"><rect width="300" height="300" fill="#d6efec"/><g fill="#0f766e"><path d="M105 215c0-40 20-70 45-70s45 30 45 70z"/><path d="M110 140l10-45 28 30zM190 140l-10-45-28 30z"/><circle cx="150" cy="140" r="38"/></g><g fill="#fff"><circle cx="136" cy="138" r="5"/><circle cx="164" cy="138" r="5"/></g><path d="M195 212c28 0 38-16 32-34" stroke="#0f766e" stroke-width="9" fill="none" stroke-linecap="round"/></svg>`);
-  const MOCK_POKE = svgData(`<svg xmlns="http://www.w3.org/2000/svg" width="200" height="200" viewBox="0 0 200 200"><circle cx="100" cy="100" r="80" fill="#fff" stroke="#1d1b26" stroke-width="9"/><path d="M20 100a80 80 0 0 1 160 0z" fill="#e5484d" stroke="#1d1b26" stroke-width="9"/><path d="M20 100h160" stroke="#1d1b26" stroke-width="9"/><circle cx="100" cy="100" r="22" fill="#fff" stroke="#1d1b26" stroke-width="9"/></svg>`);
-  const setMock = (id, on) => document.getElementById(id).classList.toggle("hidden", !on);
-
-  // ── 서울 날씨 ─────────────────────────────────────────────
-  const ICON = {
-    sun: '<circle cx="12" cy="12" r="4.5"/><path d="M12 2v2.5M12 19.5V22M2 12h2.5M19.5 12H22M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8"/>',
-    cloud: '<path d="M7 18h10a4 4 0 0 0 .4-8 6 6 0 0 0-11.5 1.6A3.3 3.3 0 0 0 7 18z"/>',
-    rain: '<path d="M7 15h10a4 4 0 0 0 .4-8 6 6 0 0 0-11.5 1.6A3.3 3.3 0 0 0 7 15z"/><path d="M8 18l-1 3M12 18l-1 3M16 18l-1 3"/>',
-    snow: '<path d="M7 15h10a4 4 0 0 0 .4-8 6 6 0 0 0-11.5 1.6A3.3 3.3 0 0 0 7 15z"/><path d="M8 19h.01M12 21h.01M16 19h.01"/>'
-  };
-  const iconFor = code => {
-    const k = String(code || "").slice(0, 2);
-    const d = k === "01" ? ICON.sun : ["09", "10", "11"].includes(k) ? ICON.rain : k === "13" ? ICON.snow : ICON.cloud;
-    return `<svg width="34" height="34" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round">${d}</svg>`;
-  };
-  (async function loadWeather() {
-    let w = null;
-    for (const src of ["https://raw.githubusercontent.com/summer-kim626/PM-blog/main/data/weather.json", "data/weather.json"]) {
-      try { const r = await fetch(src + "?t=" + Math.floor(Date.now() / 600000), { cache: "no-store" }); if (r.ok) { w = await r.json(); break; } } catch (e) {}
-    }
-    if (!w || typeof w.temp !== "number") return; // 데이터가 없으면 날씨 카드는 숨긴 채 둡니다.
-    const time = new Date(w.observed_at * 1000).toLocaleTimeString("ko-KR", { timeZone: "Asia/Seoul", hour: "2-digit", minute: "2-digit" });
-    document.getElementById("w-icon").innerHTML = iconFor(w.icon);
-    document.getElementById("w-temp").textContent = `${w.temp}°`;
-    document.getElementById("w-desc").textContent = `${w.description} · 체감 ${w.feels_like}° · 습도 ${w.humidity}% · ${time} 기준`;
-    document.getElementById("weather").classList.remove("hidden");
-  })();
-
-  // ── 랜덤 고양이 ───────────────────────────────────────────
-  (function catWidget() {
-    const $img = document.getElementById("cat-img"), $btn = document.getElementById("cat-btn");
-    let hasPhoto = false;
-    async function loadCat(source) {
-      $btn.disabled = true; $img.classList.add("opacity-30");
-      try {
-        const r = await fetch("https://api.thecatapi.com/v1/images/search?size=med&mime_types=jpg,png", { cache: "no-store" });
-        const [cat] = await r.json();
-        if (!cat || !cat.url) throw new Error("no image");
-        if (!(await loadImg($img, cat.url))) throw new Error("image load failed");
-        hasPhoto = true; setMock("cat-mock", false);
-        if (source === "button") (window.dataLayer = window.dataLayer || []).push({ event: "cat_refresh" });
-      } catch (e) {
-        // 실제 사진을 한 번도 못 받았으면 목업 이미지, 이미 사진이 있으면 그대로 유지
-        if (!hasPhoto) { $img.src = MOCK_CAT; setMock("cat-mock", true); }
-      }
-      finally { $btn.disabled = false; $img.classList.remove("opacity-30"); }
-    }
-    $btn.addEventListener("click", () => loadCat("button"));
-    loadCat("init");
-  })();
-
-  // ── 오늘의 포켓몬 (트레이딩 카드, 타입 색으로 테두리) ────────────
-  (async function pokemonOfTheDay() {
-    const TYPE = { normal: ["노말", "#a8a77a"], fire: ["불꽃", "#ee8130"], water: ["물", "#6390f0"], electric: ["전기", "#f7d02c"],
-      grass: ["풀", "#7ac74c"], ice: ["얼음", "#96d9d6"], fighting: ["격투", "#c22e28"], poison: ["독", "#a33ea1"],
-      ground: ["땅", "#e2bf65"], flying: ["비행", "#a98ff3"], psychic: ["에스퍼", "#f95587"], bug: ["벌레", "#a6b91a"],
-      rock: ["바위", "#b6a136"], ghost: ["고스트", "#735797"], dragon: ["드래곤", "#6f35fc"], dark: ["악", "#705746"],
-      steel: ["강철", "#b7b7ce"], fairy: ["페어리", "#d685ad"] };
-    let p;
-    try {
-      const api = "https://pokeapi.co/api/v2";
-      const { count } = await (await fetch(`${api}/pokemon-species?limit=1`)).json();
-      const dayIndex = Math.floor((Date.now() + 9 * 3600 * 1000) / 86400000);
-      const id = (dayIndex * 7919) % count + 1;
-      const [species, poke] = await Promise.all([
-        fetch(`${api}/pokemon-species/${id}`).then(r => r.json()),
-        fetch(`${api}/pokemon/${id}`).then(r => r.json())
-      ]);
-      const ko = (list, key) => (list.find(x => x.language.name === "ko") || {})[key];
-      p = { id, name: ko(species.names, "name") || poke.name, genus: ko(species.genera, "genus") || "",
-            types: poke.types.map(t => t.type.name),
-            art: poke.sprites.other["official-artwork"].front_default || poke.sprites.front_default };
-    } catch (e) {
-      // 데이터를 못 받으면 목업 카드로 표시
-      document.getElementById("poke-img").src = MOCK_POKE;
-      document.getElementById("poke-img").alt = "포켓몬 목업 이미지";
-      document.getElementById("poke-name").textContent = "오늘의 포켓몬";
-      document.getElementById("poke-no").textContent = "No.????";
-      document.getElementById("poke-genus").textContent = "지금은 불러오지 못했어요";
-      setMock("poke-mock", true);
-      return;
-    }
-    const $img = document.getElementById("poke-img");
-    $img.alt = p.name;
-    // 정보는 받았지만 그림만 실패한 경우: 정보는 보여주고 그림만 목업
-    if (!p.art || !(await loadImg($img, p.art))) { $img.src = MOCK_POKE; setMock("poke-mock", true); }
-    document.getElementById("poke-card").style.setProperty("--type-color", (TYPE[p.types[0]] || [, "#a8a77a"])[1]);
-    document.getElementById("poke-no").textContent = "No." + String(p.id).padStart(4, "0");
-    document.getElementById("poke-name").textContent = p.name;
-    document.getElementById("poke-genus").textContent = p.genus;
-    document.getElementById("poke-types").innerHTML = p.types.map(t => {
-      const [ko, color] = TYPE[t] || [t, "#a8a77a"];
-      return `<span class="rounded-full px-2 py-0.5 text-xs font-bold text-white" style="background:${color}">${esc(ko)}</span>`;
-    }).join("");
-  })();
 </script>
 </body>
 </html>
