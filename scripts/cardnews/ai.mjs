@@ -49,7 +49,7 @@ const OUTPUT_SCHEMA = {
   additionalProperties: false,
 };
 
-const FIGURE_GUIDE = `
+export const FIGURE_GUIDE = `
 | shape | 언제 쓰나 | labels |
 | versus | 두 가지를 비교·대조 | [A, B] |
 | link | 두 가지를 잇는 관계 | [A, B, 연결 이름] |
@@ -104,7 +104,8 @@ ${FIGURE_GUIDE}
 ${post.text}`;
 }
 
-async function callClaude(client, model, prompt, { timeoutMs, effort }) {
+// schema: 구조화 출력 JSON 스키마 (기본은 카드뉴스). 아티클 도형 추가(scripts/articles/figure-ai.mjs)도 이 함수를 쓴다
+export async function callClaude(client, model, prompt, { timeoutMs, effort, schema = OUTPUT_SCHEMA }) {
   let res;
   try {
     res = await client.beta.messages.create(
@@ -116,7 +117,7 @@ async function callClaude(client, model, prompt, { timeoutMs, effort }) {
         fallbacks: "default",
         output_config: {
           ...(effort ? { effort } : {}),
-          format: { type: "json_schema", schema: OUTPUT_SCHEMA },
+          format: { type: "json_schema", schema },
         },
         messages: [{ role: "user", content: prompt }],
       },
@@ -145,7 +146,7 @@ async function callClaude(client, model, prompt, { timeoutMs, effort }) {
   return { text, model: res.model };
 }
 
-function parseJson(text) {
+export function parseJson(text) {
   // 구조화 출력이라 보통 JSON 그대로 오지만, 코드 블록으로 감싸 오면 벗겨낸다
   const cleaned = text.trim().replace(/^```(?:json)?\s*/i, "").replace(/\s*```$/, "");
   return JSON.parse(cleaned);
