@@ -302,7 +302,7 @@
   - 발행한 글은 기존 글과 같은 `<article>` 구조라 카드뉴스 생성(F2 `parse.mjs`)이 그대로 읽는다.
   - 마크다운 원본이 없는 기존 HTML 글 3편은 아티클 탭에서 고칠 수 없다.
 
-## D-019. 글 조회수를 GA4에서 집계
+## D-019. 글 조회수를 GA4에서 집계 (D-020으로 철회)
 
 - **날짜:** 2026-11-26
 - **결정:** 조회수는 작성자가 입력하지 않고, GA4 `screenPageViews`를 GitHub Actions가 6시간마다 받아 `data/views.json`에 커밋한다. 글 페이지(`assets/post-views.js`)와 관리자 아티클 탭이 이 파일을 읽어 보여 준다.
@@ -312,3 +312,12 @@
   - 레포 Secret 2개가 필요하다: `GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_JSON`(GA4 속성에 '뷰어'로 추가한 서비스 계정 키). 없으면 워크플로우가 실패로 끝난다.
   - 실시간이 아니다(최대 6시간 + GA4 처리 지연). 숫자가 바뀔 때만 커밋하므로 봇 커밋이 다시 생긴다 → 푸시 전 `git pull --rebase`.
   - 기존 HTML 글 3편에도 `post-views.js`를 넣었다. `views.json`에 값이 없으면 아무것도 그리지 않는다.
+
+## D-020. 글 조회수 기능 철회
+
+- **날짜:** 2026-11-27
+- **결정:** D-019의 조회수 기능을 뺀다. `update-views.yml`, `scripts/views/`, `assets/post-views.js`와 글 페이지·관리자 아티클 탭의 조회수 표시를 지운다.
+- **이유:** 사용자 요청. GCP 서비스 계정·Secret 설정 부담에 비해 얻는 것이 적다.
+- **영향**
+  - 아티클 메타데이터는 제목·카테고리·설명·태그·발행일만 남는다.
+  - 레포 Secret `GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_JSON`은 더 쓰지 않는다. GA4 수집(GTM)은 그대로 둔다.

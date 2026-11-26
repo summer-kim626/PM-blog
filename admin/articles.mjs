@@ -3,7 +3,6 @@
 // - figure 추가: Claude가 본문 이해를 돕는 도형과 자리를 고르고, 카드뉴스와 같은 figures.js로 그린다
 // - 임시 저장: 작성 중인 글은 이 브라우저 localStorage에만 둔다 (키·토큰은 넣지 않는다)
 // - 발행일: 새 글은 [발행]을 누른 날(한국 날짜)로 자동. 수정할 때는 처음 발행일을 그대로 둔다
-// - 조회수: 입력하지 않는다. GA4 집계(data/views.json, update-views 워크플로우)를 읽어 보여 주기만 한다
 import { renderMarkdown, toSource, parseSource } from "../scripts/articles/markdown.mjs";
 import { postHtml, articleInner, upsertPostEntry, ARTICLE_CSS } from "../scripts/articles/page.mjs";
 import { suggestFigures } from "../scripts/articles/figure-ai.mjs";
@@ -27,7 +26,7 @@ export function initArticles(kit) {
   };
   const preview = $("#a-preview");
   const status = $("#a-status");
-  const st = { editing: null, date: null, busy: false, dirty: false, undo: null, views: null };
+  const st = { editing: null, date: null, busy: false, dirty: false, undo: null };
   const style = document.createElement("style");
   style.textContent = scopedArticleCss();
   document.head.append(style);
@@ -71,17 +70,8 @@ export function initArticles(kit) {
     $("#a-date").textContent = st.editing ? `${pubDate()} (처음 발행일 유지)` : `발행 시 자동 (${today()})`;
   }
   function showMode() {
-    const v = st.editing && st.views?.views?.[st.editing];
-    $("#a-mode").textContent = st.editing
-      ? `수정 중: posts/${st.editing}.html${v != null ? ` · 조회수 ${Number(v).toLocaleString("ko-KR")}` : ""}`
-      : "새 글";
+    $("#a-mode").textContent = st.editing ? `수정 중: posts/${st.editing}.html` : "새 글";
   }
-
-  // ── 조회수: GA4 집계 파일 (없거나 못 읽으면 표시하지 않는다) ──
-  fetch("../data/views.json", { cache: "no-cache" })
-    .then(r => (r.ok ? r.json() : null))
-    .then(v => { if (v?.views) { st.views = v; showMode(); fillPicker(); draw(); } })
-    .catch(() => {});
 
   // ── 작성 ↔ 미리보기 전환 (한 번에 하나만 보여 글쓰기에 집중) ──
   function setView(view, focus) {
@@ -113,8 +103,6 @@ export function initArticles(kit) {
       // 모든 글자는 esc()·inline()에서 이스케이프된 뒤라 innerHTML로 넣어도 태그가 실행되지 않는다
       preview.innerHTML = `<article>${articleInner({ ...meta, title: meta.title || "제목", description: meta.description || "한 줄 설명", category: meta.category || "카테고리" }, body)}</article>`;
       preview.querySelector(".back")?.removeAttribute("href");
-      const v = st.editing && st.views?.views?.[st.editing];
-      preview.querySelector(".meta")?.append(el("span", null, v != null ? `조회수 ${Number(v).toLocaleString("ko-KR")}` : "조회수 (발행 후 GA4 집계)"));
     }, 120);
   }
 
@@ -163,8 +151,7 @@ export function initArticles(kit) {
     pick.replaceChildren(el("option", null, "기존 글 불러오기…"));
     pick.firstChild.value = "";
     for (const p of getPosts()) {
-      const v = st.views?.views?.[p.slug];
-      const o = el("option", null, `${p.date} · ${p.title}${v != null ? ` · 조회수 ${Number(v).toLocaleString("ko-KR")}` : ""}`);
+      const o = el("option", null, `${p.date} · ${p.title}`);
       o.value = p.slug;
       pick.append(o);
     }
