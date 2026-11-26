@@ -1,0 +1,44 @@
+# 글 조회수를 GA4에서 받아 data/views.json 으로 저장합니다 (D-019).
+# 레포 Settings > Secrets and variables > Actions 에 아래 두 값이 있어야 합니다.
+#   GA4_PROPERTY_ID           GA4 속성 ID (숫자)
+#   GA4_SERVICE_ACCOUNT_JSON  GA4 속성에 '뷰어'로 추가한 서비스 계정의 키 JSON 전체
+# 조회수가 바뀌었을 때만 커밋합니다.
+name: Update post views
+
+on:
+  schedule:
+    - cron: "41 */6 * * *"   # 6시간마다 41분 (UTC)
+  workflow_dispatch:           # Actions 탭에서 수동 실행 가능
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-views
+  cancel-in-progress: true
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Fetch views from GA4
+        env:
+          GA4_PROPERTY_ID: ${{ secrets.GA4_PROPERTY_ID }}
+          GA4_SERVICE_ACCOUNT_JSON: ${{ secrets.GA4_SERVICE_ACCOUNT_JSON }}
+        run: node scripts/views/fetch-views.mjs
+
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add data/views.json
+          git diff --cached --quiet && { echo "변경 없음"; exit 0; }
+          git commit -m "chore(views): 글 조회수 갱신"
+          git pull --rebase
+          git push
