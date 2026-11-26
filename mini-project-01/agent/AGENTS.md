@@ -26,6 +26,11 @@
 | `data/cardnews/<slug>/` | 생성 결과 (출력) | `summary.json`, `card-01.png` … |
 | `data/cardnews/index.json` | 글별 생성 상태 | `{ slug: { status, generated_at, cards, warnings, error } }`, status는 `done`·`warning`·`failed` |
 | `admin/index.html` | 관리자 페이지 `/admin` (F1~F5·F7) | 열: 글 제목 / 생성 유무 / 미리보기 / 다운로드 / 재생성 (PRD 4.3). 생성: `parse` → `ai` → 숨긴 iframe의 `template.html` + html-to-image로 PNG → GitHub Git Data API로 커밋 1개. 다운로드는 `<slug>-cardnews.zip`(JSZip, D-010). `noindex`, CSP로 전송처 제한 |
+| `admin/articles.mjs` | 관리자 "아티클" 탭 (D-018) | 마크다운 작성·미리보기·figure 추가·발행. 발행은 커밋 1개에 `posts/<slug>.html` + `posts/md/<slug>.md` + `index.html` 항목 |
+| `scripts/articles/` | 아티클 공용 모듈 (브라우저 호환) | `markdown`(마크다운→HTML, 원본 파일 형식) · `page`(글 페이지 템플릿, `allPosts` 항목 갱신) · `figure-ai`(figure 추가, 카드뉴스와 같은 모델·도형 규칙) |
+| `posts/md/<slug>.md` | 아티클 원본 | 위쪽 `---` 사이에 메타데이터(제목·슬러그·카테고리·설명·태그·발행일). 관리자 페이지에서 다시 불러와 고친다 |
+| `data/views.json` · `scripts/views/` · `assets/post-views.js` | 글 조회수 (D-019) | `update-views.yml`이 6시간마다 GA4에서 받아 커밋. 사람이 고치지 않는다. 새 글은 `</body>` 앞에 `post-views.js`도 넣는다 |
+| `.github/workflows/update-views.yml` | 조회수 갱신 자동화 | Secret `GA4_PROPERTY_ID`, `GA4_SERVICE_ACCOUNT_JSON` 필요 |
 | `mini-project-01/` | 제출 문서 | PRD, 로그, 테스트 보고서, 스크린샷 |
 
 - 소스코드의 새 위치가 생기면 의사결정 로그에 기록한다.
@@ -109,7 +114,7 @@
   - 예: `feat: 카드뉴스 PNG 렌더링 스크립트 추가`
 - 한 커밋에는 한 가지 변경만 담는다. 과제가 중간 커밋 기록을 평가하므로 작업 단위마다 커밋한다.
 - PRD·테스트 보고서를 고치면 커밋 메시지에 버전을 적는다. 예: `docs: PRD v0.3 성공 기준 수정`
-- 관리자 페이지가 main에 직접 커밋하므로 **푸시 전에 `git pull --rebase`**를 한다.
+- 관리자 페이지와 조회수 봇이 main에 직접 커밋하므로 **푸시 전에 `git pull --rebase`**를 한다.
 - 관리자 페이지가 만드는 커밋은 `chore(cardnews): <slug> 카드뉴스 생성`(실패 시 `… 생성 실패 기록`) 형식을 쓴다.
 - 사용자가 요청하기 전에는 커밋·푸시하지 않는다.
 

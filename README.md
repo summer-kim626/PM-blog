@@ -11,6 +11,7 @@ IT 서비스 기획을 공부하며 PM/PO 포트폴리오를 쌓아가는 개인
 | 영역 | 설명 |
 | --- | --- |
 | 글 보드 | 카테고리 탭으로 필터링되는 발행된 글 목록 |
+| 관리자 `/admin` | **카드뉴스** 탭: AI 요약·카드뉴스 생성 / **아티클** 탭: 마크다운으로 글 작성, AI로 이해를 돕는 도형(figure) 넣기, GitHub 토큰으로 바로 발행 |
 | 소개 | 블로그와 작성자 소개 |
 
 ## 폴더 구조
@@ -54,6 +55,8 @@ npm run build:css
 
 ## 새 글 추가하기
 
+관리자 페이지(`/admin/#articles`)에서 마크다운으로 쓰고 **발행**하면 아래 1~2단계가 자동으로 됩니다(원본은 `posts/md/`에 남습니다). 직접 HTML로 쓸 때는:
+
 1. `posts/YYYY-MM-DD-slug.html` 파일을 만듭니다. (기존 글 파일을 복사해 쓰면 편합니다.)
 2. `index.html`의 `posts` 배열에 항목을 추가합니다.
 
@@ -65,6 +68,19 @@ npm run build:css
 - `cat` 값은 카테고리 탭으로 자동 생성됩니다.
 
 3. 새 클래스를 썼다면 `npm run build:css`를 실행합니다.
+
+## 글 조회수 (GA4)
+
+`.github/workflows/update-views.yml`이 6시간마다 GA4에서 글별 페이지 조회수를 받아 `data/views.json`에 저장하고, 글 상단과 관리자 아티클 탭에 보여 줍니다. 처음 한 번 아래 설정이 필요합니다.
+
+1. [Google Cloud 콘솔](https://console.cloud.google.com/)에서 프로젝트를 고르고 **Google Analytics Data API**를 사용 설정합니다.
+2. **IAM 및 관리자 → 서비스 계정**에서 서비스 계정을 만들고, **키 → 키 추가 → JSON**으로 키 파일을 받습니다.
+3. GA4 **관리 → 속성 액세스 관리**에 서비스 계정 이메일(`…@….iam.gserviceaccount.com`)을 **뷰어**로 추가합니다.
+4. GA4 **관리 → 속성 세부정보**의 **속성 ID**(숫자)를 확인합니다.
+5. 레포 **Settings → Secrets and variables → Actions**에 추가합니다.
+   - `GA4_PROPERTY_ID`: 4의 숫자
+   - `GA4_SERVICE_ACCOUNT_JSON`: 2에서 받은 JSON 파일 내용 전체
+6. **Actions → Update post views → Run workflow**로 한 번 실행해 확인합니다.
 
 ## 미니 프로젝트
 
